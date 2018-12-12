@@ -9,7 +9,7 @@ extern Blam::Application* Blam::CreateApplication();
 int main(int arc, char** argv)
 {
 	Blam::Log::Init();
-	BLAM_CORE_WARN("Hello there!");
+	BLAM_CORE_INFO("Hello there!");
 
 	auto app = Blam::CreateApplication();
 	app->Run();

@@ -7,24 +7,27 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="src\BLAM.h" />
-    <ClInclude Include="src\Core\Application.h">
+    <ClInclude Include="src\BLAM\Event\Handler.h" />
+    <ClInclude Include="src\BLAM\Event\Types.h" />
+    <ClInclude Include="src\BLAM\Application.h">
       <Filter>Core</Filter>
     </ClInclude>
-    <ClInclude Include="src\Core\Core.h">
+    <ClInclude Include="src\BLAM\Core.h">
       <Filter>Core</Filter>
     </ClInclude>
-    <ClInclude Include="src\Core\EntryPoint.h">
+    <ClInclude Include="src\BLAM\EntryPoint.h">
       <Filter>Core</Filter>
     </ClInclude>
-    <ClInclude Include="src\Core\Log.h">
+    <ClInclude Include="src\BLAM\Event.h" />
+    <ClInclude Include="src\BLAM\Log.h">
       <Filter>Core</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="src\Core\Application.cpp">
+    <ClCompile Include="src\BLAM\Application.cpp">
       <Filter>Core</Filter>
     </ClCompile>
-    <ClCompile Include="src\Core\Log.cpp">
+    <ClCompile Include="src\BLAM\Log.cpp">
       <Filter>Core</Filter>
     </ClCompile>
   </ItemGroup>

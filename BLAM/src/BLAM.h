@@ -1,5 +1,5 @@
 #pragma once
 
-#include "Core/Application.h"
-#include "Core/Log.h"
-#include "Core/EntryPoint.h"
+#include "BLAM/Application.h"
+#include "BLAM/Log.h"
+#include "BLAM/EntryPoint.h"
