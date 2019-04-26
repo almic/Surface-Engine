@@ -1,6 +1,7 @@
+#include "spch.h"
 #include "Log.h"
 
-namespace Blam {
+namespace Surface {
 
 	std::shared_ptr<spdlog::logger> Log::s_CoreLogger;
 	std::shared_ptr<spdlog::logger> Log::s_ClientLogger;

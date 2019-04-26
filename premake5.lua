@@ -1,4 +1,4 @@
-workspace "Blam"
+workspace "Surface"
 	architecture "x64"
 
 	configurations
@@ -10,13 +10,21 @@ workspace "Blam"
 
 outputdir = "%{cfg.buildcfg}-%{cfg.system}-%{cfg.architecture}"
 
-project "Blam"
-	location "BLAM"
+IncludeDir = {}
+IncludeDir["GLFW"] = "Surface/vendor/GLFW/include"
+
+include "Surface/vendor/GLFW"
+
+project "Surface"
+	location "Surface"
 	kind "SharedLib"
 	language "C++"
 
 	targetdir ("bin/" .. outputdir .. "/%{prj.name}")
 	objdir ("bin-int/" .. outputdir .. "/%{prj.name}")
+
+	pchheader "spch.h"
+	pchsource "Surface/src/spch.cpp"
 
 	files
 	{
@@ -27,18 +35,25 @@ project "Blam"
 	includedirs
 	{
 		"%{prj.name}/src",
-		"%{prj.name}/vendor/spdlog/include"
+		"%{prj.name}/vendor/spdlog/include",
+		"%{IncludeDir.GLFW}"
+	}
+
+	links
+	{
+		"GLFW",
+		"opengl32.lib"
 	}
 
 	filter "system:windows"
 		cppdialect "C++17"
-		staticruntime "On"
+		staticruntime "off"
 		systemversion "latest"
 
 		defines
 		{
-			"BLAM_PLATFORM_WINDOWS",
-			"BLAM_BUILD"
+			"SURF_PLATFORM_WINDOWS",
+			"SURF_BUILD"
 		}
 
 		postbuildcommands
@@ -47,15 +62,15 @@ project "Blam"
 		}
 
 	filter "configurations:Debug"
-		defines "BLAM_DEBUG"
+		defines "SURF_DEBUG"
 		symbols "On"
 
 	filter "configurations:Release"
-		defines "BLAM_RELEASE"
+		defines "SURF_RELEASE"
 		optimize "On"
 
 	filter "configurations:Dist"
-		defines "BLAM_DIST"
+		defines "SURF_DIST"
 		optimize "On"
 
 project "Sandbox"
@@ -74,33 +89,33 @@ project "Sandbox"
 
 	includedirs
 	{
-		"BLAM/vendor/spdlog/include",
-		"BLAM/src"
+		"Surface/vendor/spdlog/include",
+		"Surface/src"
 	}
 
 	links
 	{
-		"BLAM"
+		"Surface"
 	}
 
 	filter "system:windows"
 		cppdialect "C++17"
-		staticruntime "On"
+		staticruntime "off"
 		systemversion "latest"
 
 		defines
 		{
-			"BLAM_PLATFORM_WINDOWS"
+			"SURF_PLATFORM_WINDOWS"
 		}
 
 	filter "configurations:Debug"
-		defines "BLAM_DEBUG"
+		defines "SURF_DEBUG"
 		symbols "On"
 
 	filter "configurations:Release"
-		defines "BLAM_RELEASE"
+		defines "SURF_RELEASE"
 		optimize "On"
 
 	filter "configurations:Dist"
-		defines "BLAM_DIST"
+		defines "SURF_DIST"
 		optimize "On"

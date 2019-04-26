@@ -3,30 +3,24 @@
 #include "Core.h"
 #include "Event/Types.h"
 
-#include <string>
-#include <functional>
+namespace Surface {
 
-#if defined(BLAM_DEBUG) | defined(BLAM_RELEASE)
-#include <sstream>
-#endif // defined BLAM_DEBUG or BLAM_RELEASE
+#define SURF_EVENT_TYPE(t) static EventType GetEventType() { return t; }\
+						   virtual bool IsOfCategory(EventType type) override { return (bool) (GetEventType() & type & EventType::CategoryMask); }\
+						   virtual bool IsOfType(EventType type) override { return GetEventType() == type; }
 
-namespace Blam {
-
-	class BLAM_API Event
+	class SURF_API Event
 	{
 		friend class Handler;
 	public:
-		virtual EventType GetEventType() const = 0;
+		static EventType GetEventType() { return EventType::None; }
+		virtual bool IsOfCategory(EventType type) { return (bool) (GetEventType() & type & EventType::CategoryMask); }
+		virtual bool IsOfType(EventType type) { return GetEventType() == type; }
 
-		inline bool IsOfType(EventType type)
-		{
-			return (int) (GetEventType() & type);
-		}
-
-		#if defined(BLAM_DEBUG) | defined(BLAM_RELEASE)
+		#if defined(SURF_DEBUG) | defined(SURF_RELEASE)
 		virtual const char* GetName() const = 0;
 		virtual std::string ToString() const = 0;
-		#endif // defined BLAM_DEBUG or BLAM_RELEASE
+		#endif // defined SURF_DEBUG or SURF_RELEASE
 	protected:
 		bool active = true;
 	};
@@ -35,22 +29,43 @@ namespace Blam {
 
 	/* --- Window Events --- */
 
-	class BLAM_API WindowResizedEvent
+	class SURF_API WindowEvent
+		: public Event
+	{
+	public:
+		WindowEvent() {}
+
+		SURF_EVENT_TYPE(EventType::Window)
+
+		#if defined(SURF_DEBUG) | defined(SURF_RELEASE)
+		virtual const char* GetName() const override
+		{
+			return "WindowEvent";
+		}
+
+		std::string ToString() const override
+		{
+			std::stringstream ss;
+			ss << GetName();
+			return ss.str();
+		}
+		#endif // defined SURF_DEBUG or SURF_RELEASE
+
+	};
+
+	class SURF_API WindowResizedEvent
 		: public Event
 	{
 	public:
 		WindowResizedEvent(unsigned int width, unsigned int height)
 			: width(width), height(height) {}
 
-		virtual EventType GetEventType() const override
-		{
-			return EventType::Window | EventType::WindowResized;
-		}
+		SURF_EVENT_TYPE(EventType::WindowResized)
 
 		inline unsigned int GetWidth() const { return width; }
 		inline unsigned int GetHeight() const { return height; }
 
-		#if defined(BLAM_DEBUG) | defined(BLAM_RELEASE)
+		#if defined(SURF_DEBUG) | defined(SURF_RELEASE)
 		virtual const char* GetName() const override
 		{
 			return "WindowResizedEvent";
@@ -62,24 +77,25 @@ namespace Blam {
 			ss << GetName() << ": " << width << ", " << height;
 			return ss.str();
 		}
-		#endif // defined BLAM_DEBUG or BLAM_RELEASE
+		#endif // defined SURF_DEBUG or SURF_RELEASE
 
 	private:
 		unsigned int width, height;
 	};
 
-	class BLAM_API WindowMovedEvent
+	class SURF_API WindowMovedEvent
 		: public Event
 	{
 	public:
-		WindowMovedEvent() {}
+		WindowMovedEvent(int xPos, int yPos)
+			: xPos(xPos), yPos(yPos) {}
 
-		virtual EventType GetEventType() const override
-		{
-			return EventType::Window | EventType::WindowMoved;
-		}
+		SURF_EVENT_TYPE(EventType::WindowMoved)
 
-		#if defined(BLAM_DEBUG) | defined(BLAM_RELEASE)
+		inline int GetX() const { return xPos; }
+		inline int GetY() const { return yPos; }
+
+		#if defined(SURF_DEBUG) | defined(SURF_RELEASE)
 		virtual const char* GetName() const override
 		{
 			return "WindowMovedEvent";
@@ -88,24 +104,23 @@ namespace Blam {
 		std::string ToString() const override
 		{
 			std::stringstream ss;
-			ss << GetName();
+			ss << GetName() << ": " << xPos << ", " << yPos;
 			return ss.str();
 		}
-		#endif // defined BLAM_DEBUG or BLAM_RELEASE
+		#endif // defined SURF_DEBUG or SURF_RELEASE
+	private:
+		int xPos, yPos;
 	};
 
-	class BLAM_API WindowFocusedEvent
+	class SURF_API WindowFocusedEvent
 		: public Event
 	{
 	public:
 		WindowFocusedEvent() {}
 
-		virtual EventType GetEventType() const override
-		{
-			return EventType::Window | EventType::WindowFocused;
-		}
+		SURF_EVENT_TYPE(EventType::WindowFocused)
 
-		#if defined(BLAM_DEBUG) | defined(BLAM_RELEASE)
+		#if defined(SURF_DEBUG) | defined(SURF_RELEASE)
 		virtual const char* GetName() const override
 		{
 			return "WindowFocusedEvent";
@@ -117,21 +132,18 @@ namespace Blam {
 			ss << GetName();
 			return ss.str();
 		}
-		#endif // defined BLAM_DEBUG or BLAM_RELEASE
+		#endif // defined SURF_DEBUG or SURF_RELEASE
 	};
 
-	class BLAM_API WindowLostFocusEvent
+	class SURF_API WindowLostFocusEvent
 		: public Event
 	{
 	public:
 		WindowLostFocusEvent() {}
 
-		virtual EventType GetEventType() const override
-		{
-			return EventType::Window | EventType::WindowLostFocus;
-		}
+		SURF_EVENT_TYPE(EventType::WindowLostFocus)
 
-		#if defined(BLAM_DEBUG) | defined(BLAM_RELEASE)
+		#if defined(SURF_DEBUG) | defined(SURF_RELEASE)
 		virtual const char* GetName() const override
 		{
 			return "WindowLostFocusEvent";
@@ -143,21 +155,18 @@ namespace Blam {
 			ss << GetName();
 			return ss.str();
 		}
-		#endif // defined BLAM_DEBUG or BLAM_RELEASE
+		#endif // defined SURF_DEBUG or SURF_RELEASE
 	};
 
-	class BLAM_API WindowClosedEvent
+	class SURF_API WindowClosedEvent
 		: public Event
 	{
 	public:
 		WindowClosedEvent() {}
 
-		virtual EventType GetEventType() const override
-		{
-			return EventType::Window | EventType::WindowClosed;
-		}
+		SURF_EVENT_TYPE(EventType::WindowClosed)
 
-		#if defined(BLAM_DEBUG) | defined(BLAM_RELEASE)
+		#if defined(SURF_DEBUG) | defined(SURF_RELEASE)
 		virtual const char* GetName() const override
 		{
 			return "WindowClosedEvent";
@@ -169,24 +178,21 @@ namespace Blam {
 			ss << GetName();
 			return ss.str();
 		}
-		#endif // defined BLAM_DEBUG or BLAM_RELEASE
+		#endif // defined SURF_DEBUG or SURF_RELEASE
 	};
 
 
 	/* --- Application Events --- */
 
-	class BLAM_API AppTickedEvent
+	class SURF_API AppTickedEvent
 		: public Event
 	{
 	public:
 		AppTickedEvent() {}
 
-		virtual EventType GetEventType() const override
-		{
-			return EventType::Application | EventType::AppTicked;
-		}
+		SURF_EVENT_TYPE(EventType::AppTicked)
 
-		#if defined(BLAM_DEBUG) | defined(BLAM_RELEASE)
+		#if defined(SURF_DEBUG) | defined(SURF_RELEASE)
 		virtual const char* GetName() const override
 		{
 			return "AppTickedEvent";
@@ -198,21 +204,18 @@ namespace Blam {
 			ss << GetName();
 			return ss.str();
 		}
-		#endif // defined BLAM_DEBUG or BLAM_RELEASE
+		#endif // defined SURF_DEBUG or SURF_RELEASE
 	};
 
-	class BLAM_API AppUpdatedEvent
+	class SURF_API AppUpdatedEvent
 		: public Event
 	{
 	public:
 		AppUpdatedEvent() {}
 
-		virtual EventType GetEventType() const override
-		{
-			return EventType::Application | EventType::AppUpdated;
-		}
+		SURF_EVENT_TYPE(EventType::AppUpdated)
 
-		#if defined(BLAM_DEBUG) | defined(BLAM_RELEASE)
+		#if defined(SURF_DEBUG) | defined(SURF_RELEASE)
 		virtual const char* GetName() const override
 		{
 			return "AppUpdatedEvent";
@@ -224,21 +227,18 @@ namespace Blam {
 			ss << GetName();
 			return ss.str();
 		}
-		#endif // defined BLAM_DEBUG or BLAM_RELEASE
+		#endif // defined SURF_DEBUG or SURF_RELEASE
 	};
 
-	class BLAM_API AppRenderedEvent
+	class SURF_API AppRenderedEvent
 		: public Event
 	{
 	public:
 		AppRenderedEvent() {}
 
-		virtual EventType GetEventType() const override
-		{
-			return EventType::Application | EventType::AppRendered;
-		}
+		SURF_EVENT_TYPE(EventType::AppRendered)
 
-		#if defined(BLAM_DEBUG) | defined(BLAM_RELEASE)
+		#if defined(SURF_DEBUG) | defined(SURF_RELEASE)
 		virtual const char* GetName() const override
 		{
 			return "AppRenderedEvent";
@@ -250,13 +250,13 @@ namespace Blam {
 			ss << GetName();
 			return ss.str();
 		}
-		#endif // defined BLAM_DEBUG or BLAM_RELEASE
+		#endif // defined SURF_DEBUG or SURF_RELEASE
 	};
 
 
 	/* --- Keyboard Events --- */
 
-	class BLAM_API KeyPressedEvent
+	class SURF_API KeyPressedEvent
 		: public Event
 	{
 	public:
@@ -266,12 +266,9 @@ namespace Blam {
 		int keyCode;
 		unsigned int repeat;
 
-		virtual EventType GetEventType() const override
-		{
-			return EventType::Keyboard | EventType::KeyPressed;
-		}
+		SURF_EVENT_TYPE(EventType::KeyPressed)
 
-		#if defined(BLAM_DEBUG) | defined(BLAM_RELEASE)
+		#if defined(SURF_DEBUG) | defined(SURF_RELEASE)
 		virtual const char* GetName() const override
 		{
 			return "KeyPressedEvent";
@@ -283,10 +280,10 @@ namespace Blam {
 			ss << GetName() << ": " << keyCode << " (" << repeat << ")";
 			return ss.str();
 		}
-		#endif // defined BLAM_DEBUG or BLAM_RELEASE
+		#endif // defined SURF_DEBUG or SURF_RELEASE
 	};
 
-	class BLAM_API KeyReleasedEvent
+	class SURF_API KeyReleasedEvent
 		: public Event
 	{
 	public:
@@ -295,12 +292,9 @@ namespace Blam {
 
 		int keyCode;
 
-		virtual EventType GetEventType() const override
-		{
-			return EventType::Keyboard | EventType::KeyReleased;
-		}
+		SURF_EVENT_TYPE(EventType::KeyReleased)
 
-		#if defined(BLAM_DEBUG) | defined(BLAM_RELEASE)
+		#if defined(SURF_DEBUG) | defined(SURF_RELEASE)
 		virtual const char* GetName() const override
 		{
 			return "KeyReleasedEvent";
@@ -312,13 +306,13 @@ namespace Blam {
 			ss << GetName() << ": " << keyCode;
 			return ss.str();
 		}
-		#endif // defined BLAM_DEBUG or BLAM_RELEASE
+		#endif // defined SURF_DEBUG or SURF_RELEASE
 	};
 
 
 	/* --- Mouse Events --- */
 
-	class BLAM_API MouseButtonPressedEvent
+	class SURF_API MouseButtonPressedEvent
 		: public Event
 	{
 	public:
@@ -327,12 +321,9 @@ namespace Blam {
 
 		int button;
 
-		virtual EventType GetEventType() const override
-		{
-			return EventType::Mouse | EventType::MouseButtonPressed;
-		}
+		SURF_EVENT_TYPE(EventType::MouseButtonPressed)
 
-		#if defined(BLAM_DEBUG) | defined(BLAM_RELEASE)
+		#if defined(SURF_DEBUG) | defined(SURF_RELEASE)
 		virtual const char* GetName() const override
 		{
 			return "MouseButtonPressedEvent";
@@ -344,10 +335,10 @@ namespace Blam {
 			ss << GetName() << ": " << button;
 			return ss.str();
 		}
-		#endif // defined BLAM_DEBUG or BLAM_RELEASE
+		#endif // defined SURF_DEBUG or SURF_RELEASE
 	};
 
-	class BLAM_API MouseButtonReleasedEvent
+	class SURF_API MouseButtonReleasedEvent
 		: public Event
 	{
 	public:
@@ -356,12 +347,9 @@ namespace Blam {
 
 		int button;
 
-		virtual EventType GetEventType() const override
-		{
-			return EventType::Mouse | EventType::MouseButtonReleased;
-		}
+		SURF_EVENT_TYPE(EventType::MouseButtonReleased)
 
-		#if defined(BLAM_DEBUG) | defined(BLAM_RELEASE)
+		#if defined(SURF_DEBUG) | defined(SURF_RELEASE)
 		virtual const char* GetName() const override
 		{
 			return "MouseButtonReleasedEvent";
@@ -373,10 +361,10 @@ namespace Blam {
 			ss << GetName() << ": " << button;
 			return ss.str();
 		}
-		#endif // defined BLAM_DEBUG or BLAM_RELEASE
+		#endif // defined SURF_DEBUG or SURF_RELEASE
 	};
 
-	class BLAM_API MouseMovedEvent
+	class SURF_API MouseMovedEvent
 		: public Event
 	{
 	public:
@@ -385,12 +373,9 @@ namespace Blam {
 
 		int x, y;
 
-		virtual EventType GetEventType() const override
-		{
-			return EventType::Mouse | EventType::MouseMoved;
-		}
+		SURF_EVENT_TYPE(EventType::MouseMoved)
 
-		#if defined(BLAM_DEBUG) | defined(BLAM_RELEASE)
+		#if defined(SURF_DEBUG) | defined(SURF_RELEASE)
 		virtual const char* GetName() const override
 		{
 			return "MouseMovedEvent";
@@ -402,24 +387,21 @@ namespace Blam {
 			ss << GetName() << ": " << x << ", " << y;
 			return ss.str();
 		}
-		#endif // defined BLAM_DEBUG or BLAM_RELEASE
+		#endif // defined SURF_DEBUG or SURF_RELEASE
 	};
 
-	class BLAM_API MouseScrolledEvent
+	class SURF_API MouseScrolledEvent
 		: public Event
 	{
 	public:
-		MouseScrolledEvent(int down, int right)
-			: down(down), right(right) {}
+		MouseScrolledEvent(int up, int right)
+			: up(up), right(right) {}
 
-		int down, right;
+		int up, right;
 
-		virtual EventType GetEventType() const override
-		{
-			return EventType::Mouse | EventType::MouseScrolled;
-		}
+		SURF_EVENT_TYPE(EventType::MouseScrolled)
 
-		#if defined(BLAM_DEBUG) | defined(BLAM_RELEASE)
+		#if defined(SURF_DEBUG) | defined(SURF_RELEASE)
 		virtual const char* GetName() const override
 		{
 			return "MouseScrolledEvent";
@@ -428,10 +410,10 @@ namespace Blam {
 		std::string ToString() const override
 		{
 			std::stringstream ss;
-			ss << GetName() << ": " << down << ", " << right;
+			ss << GetName() << ": " << up << ", " << right;
 			return ss.str();
 		}
-		#endif // defined BLAM_DEBUG or BLAM_RELEASE
+		#endif // defined SURF_DEBUG or SURF_RELEASE
 	};
-	
+
 }

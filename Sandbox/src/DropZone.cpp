@@ -1,11 +1,11 @@
-#include <BLAM.h>
+#include <Surface.h>
 
-class Game : public Blam::Application
+class Game : public Surface::Application
 {
 public:
 	Game()
 	{
-		
+
 	}
 
 	~Game()
@@ -14,7 +14,7 @@ public:
 	}
 };
 
-Blam::Application* Blam::CreateApplication()
+Surface::Application* Surface::CreateApplication()
 {
 	return new Game();
 }
