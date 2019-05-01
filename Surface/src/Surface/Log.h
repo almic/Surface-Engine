@@ -25,10 +25,10 @@ namespace Surface {
 #define SURF_CORE_INFO(...)  ::Surface::Log::GetCoreLogger()->info(__VA_ARGS__)
 #define SURF_CORE_WARN(...)  ::Surface::Log::GetCoreLogger()->warn(__VA_ARGS__)
 #define SURF_CORE_ERROR(...) ::Surface::Log::GetCoreLogger()->error(__VA_ARGS__)
-#define SURF_CORE_FATAL(...) ::Surface::Log::GetCoreLogger()->fatal(__VA_ARGS__)
+#define SURF_CORE_FATAL(...) ::Surface::Log::GetCoreLogger()->critical(__VA_ARGS__)
 
 #define SURF_TRACE(...) ::Surface::Log::GetClientLogger()->trace(__VA_ARGS__)
 #define SURF_INFO(...)  ::Surface::Log::GetClientLogger()->info(__VA_ARGS__)
 #define SURF_WARN(...)  ::Surface::Log::GetClientLogger()->warn(__VA_ARGS__)
 #define SURF_ERROR(...) ::Surface::Log::GetClientLogger()->error(__VA_ARGS__)
-#define SURF_FATAL(...) ::Surface::Log::GetClientLogger()->fatal(__VA_ARGS__)
+#define SURF_FATAL(...) ::Surface::Log::GetClientLogger()->critical(__VA_ARGS__)

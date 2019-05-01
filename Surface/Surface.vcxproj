@@ -156,7 +156,7 @@
     <ClInclude Include="src\Surface\Event.h" />
     <ClInclude Include="src\Surface\Event\Handler.h" />
     <ClInclude Include="src\Surface\Event\Types.h" />
-    <ClInclude Include="src\Surface\Layer.h" />
+    <ClInclude Include="src\Surface\View.h" />
     <ClInclude Include="src\Surface\Log.h" />
     <ClInclude Include="src\Surface\Window.h" />
     <ClInclude Include="src\Surface\Window\Win64Window.h" />

@@ -4,14 +4,14 @@
 
 #ifdef SURF_PLATFORM_WINDOWS
 
-extern Surface::Application* Surface::CreateApplication();
+extern Surface::Application* Surface::CreateApplication(int arc, char** argv);
 
 int main(int arc, char** argv)
 {
 	Surface::Log::Init();
-	SURF_CORE_INFO("Hello there!");
+	SURF_CORE_INFO("Starting App");
 
-	auto app = Surface::CreateApplication();
+	Surface::Application* app = Surface::CreateApplication(arc, argv);
 	app->Run();
 	delete app;
 }

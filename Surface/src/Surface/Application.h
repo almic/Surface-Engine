@@ -4,6 +4,7 @@
 #include "Window.h"
 #include "Event.h"
 #include "Event/Handler.h"
+#include "View.h"
 
 namespace Surface {
 
@@ -11,17 +12,40 @@ namespace Surface {
 	{
 	public:
 		Application();
-		virtual ~Application();
+		virtual ~Application() = 0;
 
 		std::unique_ptr<Window> window;
 		bool running = true;
+		std::vector<View*> views;
 
-		void OnEvent(Event& event);
-		void Run();
+		virtual void OnEvent(Event& event) {}
+		virtual void OnWindowClose(WindowClosedEvent& event) {}
 
-		bool OnWindowClose(WindowClosedEvent& event);
+		virtual void Run() final;
+
+		// Adds views, ordered such that the first added is the active view.
+		// No two views may share the same name!! Returns true if the view was added, false if one with
+		// the same name already exists.
+		virtual bool AddView(View* view) final;
+
+		// Removes the view from the Application, it is recommended to explicitly set the active view
+		// after calling this because the order could have changed since.
+		virtual void RemoveView(View* view) final;
+		virtual void RemoveView(const std::string& name) final;
+
+		// Sets the view passed as the active view. If it does not exist in the list, it is added.
+		virtual bool SetView(View* view) final;
+		virtual bool SetView(const std::string& name) final;
+
+		// Moves the view passed to the end of the list so a different view can be active.
+		// You should really just use SetView() instead, but this could be helpful to someone
+		virtual void UnsetView(View* view) final;
+		virtual void UnsetView(const std::string& name) final;
+
+		virtual void SendEvent(Event& event) final;
+		virtual bool WindowClose(WindowClosedEvent& event) final;
 	};
 
-	Application* CreateApplication();
+	Application* CreateApplication(int arc, char** argv);
 
 }

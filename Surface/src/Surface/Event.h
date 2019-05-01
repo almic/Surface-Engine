@@ -11,8 +11,8 @@ namespace Surface {
 
 	class SURF_API Event
 	{
-		friend class Handler;
 	public:
+		bool active = true;
 		static EventType GetEventType() { return EventType::None; }
 		virtual bool IsOfCategory(EventType type) { return (bool) (GetEventType() & type & EventType::CategoryMask); }
 		virtual bool IsOfType(EventType type) { return GetEventType() == type; }
@@ -21,8 +21,6 @@ namespace Surface {
 		virtual const char* GetName() const = 0;
 		virtual std::string ToString() const = 0;
 		#endif // defined SURF_DEBUG or SURF_RELEASE
-	protected:
-		bool active = true;
 	};
 
 	inline std::ostream& operator<<(std::ostream& os, const Event& e) { return os << e.ToString(); }
