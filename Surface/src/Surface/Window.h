@@ -3,7 +3,7 @@
 #include "Core.h"
 #include "Event.h"
 
-extern struct GLFWwindow;
+struct GLFWwindow;
 
 namespace Surface {
 

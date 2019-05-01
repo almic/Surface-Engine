@@ -76,14 +76,14 @@ namespace Surface {
 		{
 			WindowProperties& props = WindowProperties::GetProperties(window);
 
-			props.eventCallback(MouseMovedEvent(xPos, yPos));
+			props.eventCallback(MouseMovedEvent((int)xPos, (int)yPos));
 		});
 
 		glfwSetScrollCallback(window, [](GLFWwindow* window, double right, double up)
 		{
 			WindowProperties& props = WindowProperties::GetProperties(window);
 
-			props.eventCallback(MouseScrolledEvent(up, right));
+			props.eventCallback(MouseScrolledEvent((int)up, (int)right));
 		});
 
 		glfwSetMouseButtonCallback(window, [](GLFWwindow* window, int button, int action, int mods)
