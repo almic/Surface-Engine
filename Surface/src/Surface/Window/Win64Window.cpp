@@ -1,6 +1,8 @@
 #include "spch.h"
 
 #include "Win64Window.h"
+
+#include <glad/glad.h>
 #include <GLFW/glfw3.h>
 
 namespace Surface {
@@ -35,6 +37,9 @@ namespace Surface {
 		glfwSetWindowUserPointer(window, &properties);
 		glfwSwapInterval(properties.vsync);
 		glfwSetErrorCallback(GLFWErrorCallback);
+
+		int status = gladLoadGLLoader((GLADloadproc)glfwGetProcAddress);
+		CORE_ASSERT(status, "Unable to initialize Glad");
 
 		// Window callbacks
 		glfwSetWindowFocusCallback(window, [](GLFWwindow* window, int hasFocus)

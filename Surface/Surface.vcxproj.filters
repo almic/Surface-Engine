@@ -34,6 +34,9 @@
     <ClInclude Include="src\Surface\Log.h">
       <Filter>Surface</Filter>
     </ClInclude>
+    <ClInclude Include="src\Surface\View.h">
+      <Filter>Surface</Filter>
+    </ClInclude>
     <ClInclude Include="src\Surface\Window.h">
       <Filter>Surface</Filter>
     </ClInclude>
@@ -41,9 +44,6 @@
       <Filter>Surface\Window</Filter>
     </ClInclude>
     <ClInclude Include="src\spch.h" />
-    <ClInclude Include="src\Surface\View.h">
-      <Filter>Surface</Filter>
-    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="src\Surface\Application.cpp">

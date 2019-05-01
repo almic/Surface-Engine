@@ -12,8 +12,10 @@ outputdir = "%{cfg.buildcfg}-%{cfg.system}-%{cfg.architecture}"
 
 IncludeDir = {}
 IncludeDir["GLFW"] = "Surface/vendor/GLFW/include"
+IncludeDir["Glad"] = "Surface/vendor/Glad/include"
 
 include "Surface/vendor/GLFW"
+include "Surface/vendor/Glad"
 
 project "Surface"
 	location "Surface"
@@ -36,12 +38,14 @@ project "Surface"
 	{
 		"%{prj.name}/src",
 		"%{prj.name}/vendor/spdlog/include",
-		"%{IncludeDir.GLFW}"
+		"%{IncludeDir.GLFW}",
+		"%{IncludeDir.Glad}"
 	}
 
 	links
 	{
 		"GLFW",
+		"Glad",
 		"opengl32.lib"
 	}
 
@@ -53,7 +57,8 @@ project "Surface"
 		defines
 		{
 			"SURF_PLATFORM_WINDOWS",
-			"SURF_BUILD"
+			"SURF_BUILD",
+			"GLFW_INCLUDE_NONE"
 		}
 
 		postbuildcommands
