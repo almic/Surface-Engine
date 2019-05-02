@@ -5,6 +5,11 @@
 #include "Event.h"
 #include "Event/Handler.h"
 #include "View.h"
+#include <chrono>
+
+#define MICRO_TIME std::chrono::time_point<std::chrono::steady_clock>
+#define MICRO_CLOCK std::chrono::high_resolution_clock
+#define MICRO_CLOCK_DURATION std::chrono::duration_cast<std::chrono::microseconds>
 
 namespace Surface {
 
@@ -14,14 +19,22 @@ namespace Surface {
 		Application();
 		virtual ~Application() = 0;
 
-		std::unique_ptr<Window> window;
 		bool running = true;
+		
+		double deltaTime = 0;
+		MICRO_TIME tickStart;
+		MICRO_TIME tickEnd;
+
+		std::unique_ptr<Window> window;
 		std::vector<View*> views;
 
 		virtual void OnEvent(Event& event) {}
+		virtual void OnTick(const double &deltaTime) {}
 		virtual void OnWindowClose(WindowClosedEvent& event) {}
 
 		virtual void Run() final;
+		virtual void StartTick() final;
+		virtual void EndTick() final;
 
 		// Adds views, ordered such that the first added is the active view.
 		// No two views may share the same name!! Returns true if the view was added, false if one with

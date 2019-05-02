@@ -21,7 +21,9 @@ namespace Surface {
 	{
 		while (running)
 		{
-			glClearColor(0.1, 0.5, 0.7, 1);
+			StartTick(); // Always do this first
+
+			glClearColor(0.1f, 0.5f, 0.7f, 1.f);
 			glClear(GL_COLOR_BUFFER_BIT);
 
 			View* view = views[0];
@@ -35,7 +37,42 @@ namespace Surface {
 				(*--it)->Update();
 
 			window->OnUpdate();
+
+			EndTick(); // Always do this last
 		}
+	}
+
+	void Application::StartTick()
+	{
+		tickStart = MICRO_CLOCK::now();
+	}
+
+	void Application::EndTick()
+	{
+		// Use target FPS
+		if (!window->properties.vsync && window->properties.targetFPS > 0)
+		{
+			// Calculate target delay
+			unsigned int target = (1 / (double)window->properties.targetFPS) * 1000000;
+
+			// Wait
+			while (true)
+			{
+				tickEnd = MICRO_CLOCK::now();
+				deltaTime = 1.0 * MICRO_CLOCK_DURATION(tickEnd - tickStart).count();
+				if (deltaTime >= target)
+					break;
+			}
+		}
+		else {
+			tickEnd = MICRO_CLOCK::now();
+			deltaTime = 1.0 * MICRO_CLOCK_DURATION(tickEnd - tickStart).count();
+		}
+
+		// Convert to seconds
+		deltaTime /= 1000000;
+
+		OnTick(deltaTime);
 	}
 
 	bool Application::AddView(View* view)

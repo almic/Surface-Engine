@@ -17,6 +17,7 @@ namespace Surface {
 		unsigned int xPos;
 		unsigned int yPos;
 		bool vsync;
+		int targetFPS;
 		EventCallbackFunc eventCallback;
 
 		WindowProperties(const std::string& title = "Surface",
@@ -24,8 +25,9 @@ namespace Surface {
 		                 unsigned int height = 1080,
 						 unsigned int xPos = 0,
 						 unsigned int yPos = 0,
-			             bool vsync = true)
-			: title(title), width(width), height(height), xPos(xPos), yPos(yPos), vsync(vsync) {}
+			             bool vsync = true,
+						 int targetFPS = 0)
+			: title(title), width(width), height(height), xPos(xPos), yPos(yPos), vsync(vsync), targetFPS(targetFPS) {}
 
 		static WindowProperties& GetProperties(GLFWwindow* window);
 
@@ -49,6 +51,7 @@ namespace Surface {
 		virtual void OnUpdate() = 0;
 		virtual void SetEventCallback(const EventCallbackFunc& callback) = 0;
 		virtual void SetVSync(bool enabled) = 0;
+		virtual void SetTargetFPS(int targetFPS) = 0;
 		virtual bool IsVSync() const = 0;
 
 		inline static void GLFWErrorCallback(int code, const char* reason) { SURF_CORE_ERROR("GLFW Error {0} {1}", code, reason); }

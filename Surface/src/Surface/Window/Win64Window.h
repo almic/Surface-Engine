@@ -16,6 +16,7 @@ namespace Surface {
 		void OnUpdate() override;
 		inline void SetEventCallback(const EventCallbackFunc& callback) override { properties.eventCallback = callback; };
 		void SetVSync(bool enabled) override;
+		void SetTargetFPS(int targetFPS) override;
 		inline bool IsVSync() const override { return properties.vsync; };
 	private:
 		GLFWwindow* window;

@@ -14,11 +14,11 @@ public:
 
 	void OnUpdate() override
 	{
-		SURF_INFO("Menu Update");
+		//SURF_INFO("Menu Update");
 	}
 
 	void OnEvent(Event& event) override
 	{
-		SURF_INFO(event);
+		//SURF_INFO(event);
 	}
 };

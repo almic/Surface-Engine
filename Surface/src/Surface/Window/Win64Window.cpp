@@ -160,4 +160,13 @@ namespace Surface {
 		}
 	}
 
+	void Win64Window::SetTargetFPS(int targetFPS)
+	{
+		if (targetFPS > 0)
+		{
+			SetVSync(false);
+			properties.targetFPS = targetFPS;
+		}
+	}
+
 }
