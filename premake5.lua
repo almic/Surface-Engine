@@ -1,21 +1,19 @@
 workspace "Surface"
 	architecture "x64"
-
-	configurations
-	{
-		"Debug",
-		"Release",
-		"Dist"
-	}
+	configurations { "Debug", "Release", "Dist" }
+	startproject "Sandbox"
 
 outputdir = "%{cfg.buildcfg}-%{cfg.system}-%{cfg.architecture}"
 
 IncludeDir = {}
 IncludeDir["GLFW"] = "Surface/vendor/GLFW/include"
 IncludeDir["Glad"] = "Surface/vendor/Glad/include"
+IncludeDir["imgui"] = "Surface/vendor/imgui"
+IncludeDir["spdlog"] = "Surface/vendor/spdlog/include"
 
 include "Surface/vendor/GLFW"
 include "Surface/vendor/Glad"
+include "Surface/vendor/imgui"
 
 project "Surface"
 	location "Surface"
@@ -37,15 +35,17 @@ project "Surface"
 	includedirs
 	{
 		"%{prj.name}/src",
-		"%{prj.name}/vendor/spdlog/include",
 		"%{IncludeDir.GLFW}",
-		"%{IncludeDir.Glad}"
+		"%{IncludeDir.Glad}",
+		"%{IncludeDir.imgui}",
+		"%{IncludeDir.spdlog}"
 	}
 
 	links
 	{
 		"GLFW",
 		"Glad",
+		"imgui",
 		"opengl32.lib"
 	}
 
@@ -94,8 +94,11 @@ project "Sandbox"
 
 	includedirs
 	{
-		"Surface/vendor/spdlog/include",
-		"Surface/src"
+		"Surface/src",
+		"%{IncludeDir.GLFW}",
+		"%{IncludeDir.Glad}",
+		"%{IncludeDir.imgui}",
+		"%{IncludeDir.spdlog}"
 	}
 
 	links

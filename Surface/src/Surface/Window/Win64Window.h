@@ -1,8 +1,8 @@
 #pragma once
 
 #include "Surface/Window.h"
-
-struct GLFWwindow;
+#include <glad/glad.h>
+#include <GLFW/glfw3.h>
 
 namespace Surface {
 
@@ -13,6 +13,7 @@ namespace Surface {
 		virtual ~Win64Window();
 		void Close() override;
 
+		GLFWwindow* GetGLFWwindow() override { return window; }
 		void OnUpdate() override;
 		inline void SetEventCallback(const EventCallbackFunc& callback) override { properties.eventCallback = callback; };
 		void SetVSync(bool enabled) override;

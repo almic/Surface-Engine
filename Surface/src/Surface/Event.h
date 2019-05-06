@@ -307,6 +307,32 @@ namespace Surface {
 		#endif // defined SURF_DEBUG or SURF_RELEASE
 	};
 
+	class SURF_API CharacterInputEvent
+		: public Event
+	{
+	public:
+		CharacterInputEvent(unsigned int character)
+			: character(character) {}
+
+		unsigned int character;
+
+		SURF_EVENT_TYPE(EventType::Character)
+
+		#if defined(SURF_DEBUG) | defined(SURF_RELEASE)
+		virtual const char* GetName() const override
+		{
+			return "CharacterInputEvent";
+		}
+
+		std::string ToString() const override
+		{
+			std::stringstream ss;
+			ss << GetName() << ": " << character;
+			return ss.str();
+		}
+		#endif // defined SURF_DEBUG or SURF_RELEASE
+	};
+
 
 	/* --- Mouse Events --- */
 

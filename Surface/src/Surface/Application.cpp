@@ -53,7 +53,7 @@ namespace Surface {
 		if (!window->properties.vsync && window->properties.targetFPS > 0)
 		{
 			// Calculate target delay
-			unsigned int target = (1 / (double)window->properties.targetFPS) * 1000000;
+			unsigned int target = (unsigned int)((1 / (double)window->properties.targetFPS) * 1000000);
 
 			// Wait
 			while (true)

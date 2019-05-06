@@ -1,24 +1,19 @@
 #pragma once
 
 #include <Surface.h>
+#include <Surface/GUI/ImGuiOverlay.h>
 
 using namespace Surface;
 
-class MenuLayer : public Overlay
+class MenuLayer : public ImGuiOverlay
 {
 public:
 	MenuLayer()
-		: Overlay("Menu")
+		: ImGuiOverlay("Menu")
 	{
 	}
 
-	void OnUpdate() override
+	~MenuLayer()
 	{
-		//SURF_INFO("Menu Update");
-	}
-
-	void OnEvent(Event& event) override
-	{
-		//SURF_INFO(event);
 	}
 };

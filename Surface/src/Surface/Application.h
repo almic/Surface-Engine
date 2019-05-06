@@ -17,11 +17,14 @@ namespace Surface {
 	{
 	public:
 		Application();
-		virtual ~Application() = 0;
+		virtual ~Application();
+		
+		/*static Application* app;
+		inline static Application& Get() { return *app; }*/
 
 		bool running = true;
 		
-		double deltaTime = 0;
+		double deltaTime = 1.0 / 60.0; // Default for when app starts
 		MICRO_TIME tickStart;
 		MICRO_TIME tickEnd;
 

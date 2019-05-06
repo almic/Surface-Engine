@@ -48,6 +48,7 @@ namespace Surface {
 		static Window* Create(const WindowProperties& props = WindowProperties());
 		virtual void Close() = 0;
 
+		virtual GLFWwindow* GetGLFWwindow() = 0;
 		virtual void OnUpdate() = 0;
 		virtual void SetEventCallback(const EventCallbackFunc& callback) = 0;
 		virtual void SetVSync(bool enabled) = 0;

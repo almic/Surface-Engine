@@ -37,6 +37,7 @@ namespace Surface {
 		Keyboard = 0x40,
 		KeyPressed,
 		KeyReleased,
+		Character,
 
 		// Mouse events. Mouse is being touched.
 		Mouse = 0x80,

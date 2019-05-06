@@ -2,9 +2,6 @@
 
 #include "Win64Window.h"
 
-#include <glad/glad.h>
-#include <GLFW/glfw3.h>
-
 namespace Surface {
 
 	static bool GLFWInitialized = false;
@@ -132,6 +129,13 @@ namespace Surface {
 					break;
 				}
 			}
+		});
+
+		glfwSetCharCallback(window, [](GLFWwindow* window, unsigned int character)
+		{
+			WindowProperties& props = WindowProperties::GetProperties(window);
+
+			props.eventCallback(CharacterInputEvent(character));
 		});
 	}
 
