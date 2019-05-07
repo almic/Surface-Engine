@@ -6,6 +6,7 @@ namespace Surface {
 
 #define BIND_GUI_FN(x) std::bind(&ImGuiOverlay::x, this, std::placeholders::_1)
 
+	bool ImGuiOverlay::initialized = false;
 	GLFWcursor* ImGuiOverlay::cursors[ImGuiMouseCursor_COUNT] = { 0 };
 	bool ImGuiOverlay::mouseJustPressed[5] = { false, false, false, false, false };
 
@@ -21,6 +22,8 @@ namespace Surface {
 
 	void ImGuiOverlay::OnAttach()
 	{
+		if (initialized) return;
+		initialized = true;
 		ImGui::CreateContext();
 		ImGui::StyleColorsDark();
 

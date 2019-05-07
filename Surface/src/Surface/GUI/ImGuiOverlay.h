@@ -22,6 +22,7 @@ namespace Surface {
 		void OnEvent(Event& event) override final;
 
 	private:
+		static bool initialized;
 		static GLFWcursor* cursors[ImGuiMouseCursor_COUNT];
 		static bool mouseJustPressed[5];
 		virtual void UpdateGamepad() final;

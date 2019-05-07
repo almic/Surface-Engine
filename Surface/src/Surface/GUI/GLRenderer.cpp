@@ -72,7 +72,7 @@ static unsigned int g_VboHandle = 0, g_ElementsHandle = 0;
 bool    Gl_Gui_Init(const char* glsl_version)
 {
 	ImGuiIO& io = ImGui::GetIO();
-	io.BackendRendererName = "Surface/GUI/Renderer (imgui_impl_opengl3)";
+	io.BackendRendererName = "GUI/GLRenderer";
 
 	// Store GLSL version string so we can refer to it later in case we recreate shaders. Note: GLSL version is NOT the same as GL version. Leave this to NULL if unsure.
 #if defined(IMGUI_IMPL_OPENGL_ES3)
