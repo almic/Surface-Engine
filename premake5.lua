@@ -11,9 +11,12 @@ IncludeDir["Glad"] = "Surface/vendor/Glad/include"
 IncludeDir["imgui"] = "Surface/vendor/imgui"
 IncludeDir["spdlog"] = "Surface/vendor/spdlog/include"
 
-include "Surface/vendor/GLFW"
-include "Surface/vendor/Glad"
-include "Surface/vendor/imgui"
+group "Dependencies"
+	include "Surface/vendor/GLFW"
+	include "Surface/vendor/Glad"
+	include "Surface/vendor/imgui"
+
+group ""
 
 project "Surface"
 	location "Surface"
