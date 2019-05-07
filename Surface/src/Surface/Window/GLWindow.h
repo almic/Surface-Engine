@@ -6,11 +6,11 @@
 
 namespace Surface {
 
-	class Win64Window : public Window
+	class GLWindow : public Window
 	{
 	public:
-		Win64Window(const WindowProperties& props);
-		virtual ~Win64Window();
+		GLWindow(const WindowProperties& props);
+		virtual ~GLWindow();
 		void Close() override;
 
 		GLFWwindow* GetGLFWwindow() override { return window; }

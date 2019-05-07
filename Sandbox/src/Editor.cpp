@@ -4,14 +4,14 @@
 
 namespace Surface {
 
-	class Game : public Application
+	class Editor : public Application
 	{
 	public:
 
 		double fpsLimiter = 0;
 		int fpsCounter = 0;
 
-		Game() : Application(WindowProperties(
+		Editor() : Application(WindowProperties(
 			"Surface", // Title
 			1920,      // Width
 			1080,      // Height
@@ -32,7 +32,7 @@ namespace Surface {
 			AddView(main);
 		}
 
-		~Game()
+		~Editor()
 		{
 		}
 
@@ -52,7 +52,7 @@ namespace Surface {
 
 	Application* CreateApplication(int arc, char** argv)
 	{
-		return new Game();
+		return new Editor();
 	}
 
 }

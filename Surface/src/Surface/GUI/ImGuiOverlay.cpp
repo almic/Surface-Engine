@@ -66,7 +66,7 @@ namespace Surface {
 		cursors[ImGuiMouseCursor_ResizeNWSE] = glfwCreateStandardCursor(GLFW_ARROW_CURSOR);  // FIXME: GLFW doesn't have this.
 		cursors[ImGuiMouseCursor_Hand] = glfwCreateStandardCursor(GLFW_HAND_CURSOR);
 
-		Gui_Init();
+		Gl_Gui_Init();
 	}
 
 	void ImGuiOverlay::OnUpdate()
@@ -75,7 +75,7 @@ namespace Surface {
 		io.DeltaTime = (float)app->deltaTime;
 		io.DisplaySize = ImVec2((float)app->window->properties.width, (float)app->window->properties.height);
 
-		Gui_NewFrame();
+		Gl_Gui_NewFrame();
 
 		UpdateGamepad();
 		UpdateKey();
@@ -86,7 +86,7 @@ namespace Surface {
 		ShowGui();
 
 		ImGui::Render();
-		Gui_RenderDrawData(ImGui::GetDrawData());
+		Gl_Gui_RenderDrawData(ImGui::GetDrawData());
 	}
 
 	void ImGuiOverlay::OnEvent(Event& event)

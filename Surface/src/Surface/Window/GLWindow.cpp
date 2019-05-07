@@ -1,6 +1,6 @@
 #include "spch.h"
 
-#include "Win64Window.h"
+#include "GLWindow.h"
 
 namespace Surface {
 
@@ -8,7 +8,7 @@ namespace Surface {
 
 	Window* Window::Create(const WindowProperties& props)
 	{
-		return new Win64Window(props);
+		return new GLWindow(props);
 	}
 
 	WindowProperties& WindowProperties::GetProperties(GLFWwindow* window)
@@ -16,7 +16,7 @@ namespace Surface {
 		return *(WindowProperties*)glfwGetWindowUserPointer(window);
 	}
 
-	Win64Window::Win64Window(const WindowProperties& props)
+	GLWindow::GLWindow(const WindowProperties& props)
 	{
 		properties = props;
 
@@ -174,28 +174,28 @@ namespace Surface {
 		});
 	}
 
-	Win64Window::~Win64Window()
+	GLWindow::~GLWindow()
 	{
 		Close();
 	}
 
-	void Win64Window::Close()
+	void GLWindow::Close()
 	{
 		glfwDestroyWindow(window);
 	}
 
-	void Win64Window::OnUpdate()
+	void GLWindow::OnUpdate()
 	{
 		glfwPollEvents();
 		glfwSwapBuffers(window);
 	}
 
-	void Win64Window::SetSize(unsigned int width, unsigned int height)
+	void GLWindow::SetSize(unsigned int width, unsigned int height)
 	{
 		glfwSetWindowSize(window, (int)width, (int)height);
 	}
 
-	void Win64Window::SetWindowForm(WindowForm form)
+	void GLWindow::SetWindowForm(WindowForm form)
 	{
 		#define FORCE_WINDOWED(x) if (!!glfwGetWindowMonitor(x)) glfwSetWindowMonitor(x, NULL, (int)properties.xPos, (int)properties.yPos, (int)properties.width, (int)properties.height, 0)
 		switch (form)
@@ -255,7 +255,7 @@ namespace Surface {
 		#undef FORCE_WINDOWED
 	}
 
-	void Win64Window::SetVSync(bool enabled)
+	void GLWindow::SetVSync(bool enabled)
 	{
 		if (enabled != properties.vsync)
 		{
@@ -264,7 +264,7 @@ namespace Surface {
 		}
 	}
 
-	void Win64Window::SetTargetFPS(int targetFPS)
+	void GLWindow::SetTargetFPS(int targetFPS)
 	{
 		if (targetFPS > 0)
 		{

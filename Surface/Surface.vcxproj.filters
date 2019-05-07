@@ -37,9 +37,6 @@
     <ClInclude Include="src\Surface\GUI\ImGuiOverlay.h">
       <Filter>Surface\GUI</Filter>
     </ClInclude>
-    <ClInclude Include="src\Surface\GUI\Renderer.h">
-      <Filter>Surface\GUI</Filter>
-    </ClInclude>
     <ClInclude Include="src\Surface\Log.h">
       <Filter>Surface</Filter>
     </ClInclude>
@@ -49,10 +46,15 @@
     <ClInclude Include="src\Surface\Window.h">
       <Filter>Surface</Filter>
     </ClInclude>
-    <ClInclude Include="src\Surface\Window\Win64Window.h">
+    <ClInclude Include="src\spch.h" />
+    <ClInclude Include="src\Surface\Input.h" />
+    <ClInclude Include="src\Surface\Input\GLFWInput.h" />
+    <ClInclude Include="src\Surface\Window\GLWindow.h">
       <Filter>Surface\Window</Filter>
     </ClInclude>
-    <ClInclude Include="src\spch.h" />
+    <ClInclude Include="src\Surface\GUI\GLRenderer.h">
+      <Filter>Surface\GUI</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="src\Surface\Application.cpp">
@@ -61,15 +63,15 @@
     <ClCompile Include="src\Surface\GUI\ImGuiOverlay.cpp">
       <Filter>Surface\GUI</Filter>
     </ClCompile>
-    <ClCompile Include="src\Surface\GUI\Renderer.cpp">
-      <Filter>Surface\GUI</Filter>
-    </ClCompile>
     <ClCompile Include="src\Surface\Log.cpp">
       <Filter>Surface</Filter>
     </ClCompile>
-    <ClCompile Include="src\Surface\Window\Win64Window.cpp">
+    <ClCompile Include="src\spch.cpp" />
+    <ClCompile Include="src\Surface\Window\GLWindow.cpp">
       <Filter>Surface\Window</Filter>
     </ClCompile>
-    <ClCompile Include="src\spch.cpp" />
+    <ClCompile Include="src\Surface\GUI\GLRenderer.cpp">
+      <Filter>Surface\GUI</Filter>
+    </ClCompile>
   </ItemGroup>
 </Project>

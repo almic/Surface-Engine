@@ -11,6 +11,6 @@
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="src\DropZone.cpp" />
+    <ClCompile Include="src\Editor.cpp" />
   </ItemGroup>
 </Project>

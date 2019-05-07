@@ -2,8 +2,7 @@
 
 #include "Surface/Application.h"
 #include "Surface/View.h"
-#include "Renderer.h"
-#include "imgui.h"
+#include "GLRenderer.h"
 
 namespace Surface {
 

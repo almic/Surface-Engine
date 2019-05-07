@@ -48,7 +48,7 @@
 #endif
 
 #include "spch.h"
-#include "Renderer.h"
+#include "GLRenderer.h"
 #include <stdio.h>
 #include <stdint.h>     // intptr_t
 #if defined(__APPLE__)
@@ -69,7 +69,7 @@ static int          g_AttribLocationPosition = 0, g_AttribLocationUV = 0, g_Attr
 static unsigned int g_VboHandle = 0, g_ElementsHandle = 0;
 
 // Functions
-bool    Gui_Init(const char* glsl_version)
+bool    Gl_Gui_Init(const char* glsl_version)
 {
 	ImGuiIO& io = ImGui::GetIO();
 	io.BackendRendererName = "Surface/GUI/Renderer (imgui_impl_opengl3)";
@@ -89,21 +89,21 @@ bool    Gui_Init(const char* glsl_version)
 	return true;
 }
 
-void    Gui_Shutdown()
+void    Gl_Gui_Shutdown()
 {
-	Gui_DestroyDeviceObjects();
+	Gl_Gui_DestroyDeviceObjects();
 }
 
-void    Gui_NewFrame()
+void    Gl_Gui_NewFrame()
 {
 	if (!g_FontTexture)
-		Gui_CreateDeviceObjects();
+		Gl_Gui_CreateDeviceObjects();
 }
 
 // OpenGL3 Render function.
 // (this used to be set in io.RenderDrawListsFn and called by ImGui::Render(), but you can now call this directly from your main loop)
 // Note that this implementation is little overcomplicated because we are saving/setting up/restoring every OpenGL state explicitly, in order to be able to run within any OpenGL engine that doesn't do so.
-void    Gui_RenderDrawData(ImDrawData* draw_data)
+void    Gl_Gui_RenderDrawData(ImDrawData* draw_data)
 {
 	// Avoid rendering when minimized, scale coordinates for retina displays (screen coordinates != framebuffer coordinates)
 	int fb_width = (int)(draw_data->DisplaySize.x * draw_data->FramebufferScale.x);
@@ -249,7 +249,7 @@ void    Gui_RenderDrawData(ImDrawData* draw_data)
 	glScissor(last_scissor_box[0], last_scissor_box[1], (GLsizei)last_scissor_box[2], (GLsizei)last_scissor_box[3]);
 }
 
-bool Gui_CreateFontsTexture()
+bool Gl_Gui_CreateFontsTexture()
 {
 	// Build texture atlas
 	ImGuiIO& io = ImGui::GetIO();
@@ -276,7 +276,7 @@ bool Gui_CreateFontsTexture()
 	return true;
 }
 
-void Gui_DestroyFontsTexture()
+void Gl_Gui_DestroyFontsTexture()
 {
 	if (g_FontTexture)
 	{
@@ -323,7 +323,7 @@ static bool CheckProgram(GLuint handle, const char* desc)
 	return (GLboolean)status == GL_TRUE;
 }
 
-bool    Gui_CreateDeviceObjects()
+bool    Gl_Gui_CreateDeviceObjects()
 {
 	// Backup GL state
 	GLint last_texture, last_array_buffer;
@@ -429,7 +429,7 @@ bool    Gui_CreateDeviceObjects()
 	glGenBuffers(1, &g_VboHandle);
 	glGenBuffers(1, &g_ElementsHandle);
 
-	Gui_CreateFontsTexture();
+	Gl_Gui_CreateFontsTexture();
 
 	// Restore modified GL state
 	glBindTexture(GL_TEXTURE_2D, last_texture);
@@ -439,7 +439,7 @@ bool    Gui_CreateDeviceObjects()
 	return true;
 }
 
-void    Gui_DestroyDeviceObjects()
+void    Gl_Gui_DestroyDeviceObjects()
 {
 	if (g_VboHandle) glDeleteBuffers(1, &g_VboHandle);
 	if (g_ElementsHandle) glDeleteBuffers(1, &g_ElementsHandle);
@@ -456,5 +456,5 @@ void    Gui_DestroyDeviceObjects()
 	if (g_ShaderHandle) glDeleteProgram(g_ShaderHandle);
 	g_ShaderHandle = 0;
 
-	Gui_DestroyFontsTexture();
+	Gl_Gui_DestroyFontsTexture();
 }

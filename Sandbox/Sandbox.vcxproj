@@ -134,7 +134,7 @@
     <ClInclude Include="src\Overlays\MenuLayer.h" />
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="src\DropZone.cpp" />
+    <ClCompile Include="src\Editor.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\Surface\Surface.vcxproj">

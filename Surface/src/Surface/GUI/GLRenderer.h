@@ -26,13 +26,13 @@
 #include "glad/glad.h"
 #include "GLFW/glfw3.h"
 
-IMGUI_IMPL_API bool     Gui_Init(const char* glsl_version = NULL);
-IMGUI_IMPL_API void     Gui_Shutdown();
-IMGUI_IMPL_API void     Gui_NewFrame();
-IMGUI_IMPL_API void     Gui_RenderDrawData(ImDrawData* draw_data);
+IMGUI_IMPL_API bool     Gl_Gui_Init(const char* glsl_version = NULL);
+IMGUI_IMPL_API void     Gl_Gui_Shutdown();
+IMGUI_IMPL_API void     Gl_Gui_NewFrame();
+IMGUI_IMPL_API void     Gl_Gui_RenderDrawData(ImDrawData* draw_data);
 
 // Called by Init/NewFrame/Shutdown
-IMGUI_IMPL_API bool     Gui_CreateFontsTexture();
-IMGUI_IMPL_API void     Gui_DestroyFontsTexture();
-IMGUI_IMPL_API bool     Gui_CreateDeviceObjects();
-IMGUI_IMPL_API void     Gui_DestroyDeviceObjects();
+IMGUI_IMPL_API bool     Gl_Gui_CreateFontsTexture();
+IMGUI_IMPL_API void     Gl_Gui_DestroyFontsTexture();
+IMGUI_IMPL_API bool     Gl_Gui_CreateDeviceObjects();
+IMGUI_IMPL_API void     Gl_Gui_DestroyDeviceObjects();
