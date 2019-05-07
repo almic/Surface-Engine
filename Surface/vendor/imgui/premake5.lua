@@ -24,5 +24,11 @@ project "imgui"
 		cppdialect "C++17"
 		staticruntime "On"
 
+		defines
+		{
+			"SURF_PLATFORM_WINDOWS",
+			"SURF_BUILD"
+		}
+
 	filter { "system:windows", "configurations:Release" }
 		buildoptions "/MT"

@@ -13,6 +13,22 @@
 
 #pragma once
 
+#ifdef SURF_PLATFORM_WINDOWS
+
+	#ifdef SURF_BUILD
+		#define SURF_API __declspec(dllexport)
+	#else
+		#define SURF_API __declspec(dllimport)
+	#endif // SURF_BUILD
+
+	// Import/ export ImGui stuff
+	#define IMGUI_API SURF_API
+
+	// Disable ImGui implementation functions
+	#define IMGUI_IMPL_API
+
+#endif // SURF_PLATFORM_WINDOWS
+
 //---- Define assertion handler. Defaults to calling assert().
 //#define IM_ASSERT(_EXPR)  MyAssert(_EXPR)
 //#define IM_ASSERT(_EXPR)  ((void)(_EXPR))     // Disable asserts
