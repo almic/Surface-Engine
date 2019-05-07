@@ -17,6 +17,7 @@ namespace Surface {
 	{
 	public:
 		Application();
+		Application(const WindowProperties& properties);
 		virtual ~Application();
 		
 		/*static Application* app;
@@ -30,6 +31,7 @@ namespace Surface {
 
 		std::unique_ptr<Window> window;
 		std::vector<View*> views;
+		unsigned int views_count = 0;
 
 		virtual void OnEvent(Event& event) {}
 		virtual void OnTick(const double &deltaTime) {}

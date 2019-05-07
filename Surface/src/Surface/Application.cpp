@@ -9,7 +9,12 @@ namespace Surface {
 
 	Application::Application()
 	{
-		window = std::unique_ptr<Window>(Window::Create());
+		Application(WindowProperties());
+	}
+
+	Application::Application(const WindowProperties& properties)
+	{
+		window = std::unique_ptr<Window>(Window::Create(properties));
 		window->SetEventCallback(BIND_APP_FN(SendEvent));
 	}
 
@@ -19,6 +24,8 @@ namespace Surface {
 
 	void Application::Run()
 	{
+		static bool hasWarnedNoViews = false;
+
 		while (running)
 		{
 			StartTick(); // Always do this first
@@ -26,16 +33,26 @@ namespace Surface {
 			glClearColor(0.1f, 0.5f, 0.7f, 1.f);
 			glClear(GL_COLOR_BUFFER_BIT);
 
-			View* view = views[0];
+			if (views_count == 0)
+			{
+				if (!hasWarnedNoViews)
+					SURF_CORE_WARN("No views present in application! There is nothing to render!");
+				hasWarnedNoViews = true;
+			}
+			else
+			{
+				hasWarnedNoViews = false;
+				View* view = views[0];
 
-			// Render layers first, in reverse order so that the first layer is above everything
-			for (auto it = view->layers.end(); it != view->layers.begin();)
-				(*--it)->Update();
+				// Render layers first, in reverse order so that the first layer is above everything
+				for (auto it = view->layers.end(); it != view->layers.begin();)
+					(*--it)->Update();
 
-			// Render overlays last, in reverse order as well
-			for (auto it = view->overlays.end(); it != view->overlays.begin();)
-				(*--it)->Update();
-
+				// Render overlays last, in reverse order as well
+				for (auto it = view->overlays.end(); it != view->overlays.begin();)
+					(*--it)->Update();
+			}
+			
 			window->OnUpdate();
 
 			EndTick(); // Always do this last
@@ -83,6 +100,7 @@ namespace Surface {
 				return false;
 		}
 		views.push_back(view);
+		views_count++;
 		return true;
 	}
 
@@ -90,7 +108,10 @@ namespace Surface {
 	{
 		auto it = std::find(views.begin(), views.end(), view);
 		if (it != views.end())
+		{
 			views.erase(it);
+			views_count--;
+		}
 	}
 
 	void Application::RemoveView(const std::string& name)
@@ -101,6 +122,7 @@ namespace Surface {
 			if (view->name == name)
 			{
 				views.erase(index);
+				views_count--;
 				return;
 			}
 			if (++index == views.end()) return;
@@ -117,6 +139,7 @@ namespace Surface {
 				if (index == views.begin())
 					return true;
 				views.erase(index);
+				views_count--;
 				break;
 			}
 			else if (other->name == view->name)
@@ -124,6 +147,7 @@ namespace Surface {
 			if (++index == views.end()) break;
 		}
 		views.insert(views.begin(), view);
+		views_count++;
 		return true;
 	}
 
@@ -179,27 +203,34 @@ namespace Surface {
 		OnEvent(event);
 		if (!event.active) return;
 
-		View* view = views[0];
-
-		// ALWAYS send event to overlays first, before base class
-		for (Overlay* overlay : view->overlays)
+		if (views_count != 0)
 		{
-			if (event.active)
-				overlay->SendEvent(event);
-			else return;
-		}
+			View* view = views[0];
 
+			// ALWAYS send event to overlays first, before base class
+			for (Overlay* overlay : view->overlays)
+			{
+				if (event.active)
+					overlay->SendEvent(event);
+				else return;
+			}
+		}
+		
 		// Send event to base Application functions
 		handler.Fire<WindowClosedEvent>(BIND_APP_FN(WindowClose));
 
 		// Send event to layers
 		if (!event.active) return;
 
-		for (Layer* layer : view->layers)
+		if (views_count != 0)
 		{
-			if (event.active)
-				layer->SendEvent(event);
-			else return;
+			View* view = views[0];
+			for (Layer* layer : view->layers)
+			{
+				if (event.active)
+					layer->SendEvent(event);
+				else return;
+			}
 		}
 	}
 

@@ -11,10 +11,18 @@ namespace Surface {
 		double fpsLimiter = 0;
 		int fpsCounter = 0;
 
-		Game()
+		Game() : Application(WindowProperties(
+			"Surface", // Title
+			1920,      // Width
+			1080,      // Height
+			0,         // x
+			0,         // y
+			false,     // Leaves position unset
+			false,     // Disables OpenGL vsync
+			60,        // Framerate "capped" to 60FPS
+			WindowForm::WINDOWED_FULLSCREEN
+		))
 		{
-			window->SetTargetFPS(60);
-
 			View* main = new View(this, "Main");
 
 			Overlay* menu = new MenuLayer();

@@ -29,11 +29,46 @@ namespace Surface {
 			GLFWInitialized = true;
 		}
 
-		window = glfwCreateWindow(properties.width, properties.height, properties.title.c_str(), nullptr, nullptr);
+		glfwSetErrorCallback(GLFWErrorCallback);
+
+		if (properties.form == WindowForm::FULLSCREEN)
+			window = glfwCreateWindow(properties.width, properties.height, properties.title.c_str(), glfwGetPrimaryMonitor(), nullptr);
+		else
+			window = glfwCreateWindow(properties.width, properties.height, properties.title.c_str(), nullptr, nullptr);
+
 		glfwMakeContextCurrent(window);
 		glfwSetWindowUserPointer(window, &properties);
 		glfwSwapInterval(properties.vsync);
-		glfwSetErrorCallback(GLFWErrorCallback);
+
+		if (properties.form == WindowForm::HIDDEN)
+			glfwHideWindow(window);
+		else if (properties.form == WindowForm::MINIMIZED)
+			glfwIconifyWindow(window);
+		else if (properties.form == WindowForm::MAXIMIZED)
+			glfwMaximizeWindow(window);
+		else if (properties.form == WindowForm::BORDERLESS)
+			glfwSetWindowAttrib(window, GLFW_DECORATED, GLFW_FALSE);
+		else if (properties.form == WindowForm::WINDOWED_FULLSCREEN)
+		{
+			glfwSetWindowAttrib(window, GLFW_DECORATED, GLFW_FALSE);
+
+			// Store primary monitor coords
+			int xpos, ypos, width, height;
+			glfwGetMonitorWorkarea(glfwGetPrimaryMonitor(), &xpos, &ypos, &width, &height);
+
+			glfwSetWindowPos(window, xpos, ypos);
+			glfwSetWindowSize(window, width, height);
+		}
+
+		if (properties.setPosition)
+			glfwSetWindowPos(window, (int)properties.xPos, (int)properties.yPos);
+
+		// Update window size data again, anything could've happened by now
+		{
+			int width, height;
+			glfwGetWindowSize(window, &width, &height);
+			properties.SetSize((unsigned int)width, (unsigned int)height);
+		}
 
 		int status = gladLoadGLLoader((GLADloadproc)glfwGetProcAddress);
 		CORE_ASSERT(status, "Unable to initialize Glad");
@@ -153,6 +188,71 @@ namespace Surface {
 	{
 		glfwPollEvents();
 		glfwSwapBuffers(window);
+	}
+
+	void Win64Window::SetSize(unsigned int width, unsigned int height)
+	{
+		glfwSetWindowSize(window, (int)width, (int)height);
+	}
+
+	void Win64Window::SetWindowForm(WindowForm form)
+	{
+		#define FORCE_WINDOWED(x) if (!!glfwGetWindowMonitor(x)) glfwSetWindowMonitor(x, NULL, (int)properties.xPos, (int)properties.yPos, (int)properties.width, (int)properties.height, 0)
+		switch (form)
+		{
+			case WindowForm::HIDDEN:
+			{
+				FORCE_WINDOWED(window);
+				glfwHideWindow(window);
+				break;
+			}
+			case WindowForm::MINIMIZED:
+			{
+				glfwIconifyWindow(window);
+				break;
+			}
+			case WindowForm::WINDOWED:
+			{
+				FORCE_WINDOWED(window);
+				break;
+			}
+			case WindowForm::MAXIMIZED:
+			{
+				FORCE_WINDOWED(window);
+				glfwMaximizeWindow(window);
+				break;
+			}
+			case WindowForm::BORDERLESS:
+			{
+				FORCE_WINDOWED(window);
+				glfwSetWindowAttrib(window, GLFW_DECORATED, GLFW_FALSE);
+				break;
+			}
+			case WindowForm::WINDOWED_FULLSCREEN:
+			{
+				FORCE_WINDOWED(window);
+				glfwSetWindowAttrib(window, GLFW_DECORATED, GLFW_FALSE);
+
+				// Store primary monitor coords
+				int xpos, ypos, width, height;
+				glfwGetMonitorWorkarea(glfwGetPrimaryMonitor(), &xpos, &ypos, &width, &height);
+
+				glfwSetWindowPos(window, xpos, ypos);
+				glfwSetWindowSize(window, width, height);
+				break;
+			}
+			case WindowForm::FULLSCREEN:
+			{
+				glfwSetWindowMonitor(window, glfwGetPrimaryMonitor(), 0, 0, (int)properties.width, (int)properties.height, GLFW_DONT_CARE);
+				break;
+			}
+			case WindowForm::RESTORE:
+			default:
+			{
+				glfwRestoreWindow(window);
+			}
+		}
+		#undef FORCE_WINDOWED
 	}
 
 	void Win64Window::SetVSync(bool enabled)
