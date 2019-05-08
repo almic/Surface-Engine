@@ -1,5 +1,6 @@
 #pragma once
 
+#include "Application.h"
 #include "Core.h"
 #include "Log.h"
 #include "Event.h"
@@ -8,8 +9,6 @@
 #include <vector>
 
 namespace Surface {
-
-	class Application;
 
 	class SURF_API Layer
 	{
@@ -24,12 +23,19 @@ namespace Surface {
 		virtual void OnHide(bool& is_visible) { is_visible = false; }
 		virtual void OnEvent(Event& event) {}
 
-		virtual void Attach(Application* app)
+		virtual void Attach() final
 		{
-			this->app = app;
+			// Set app as a courtesy, client doesn't have to use it
+			this->app = Application::GetApp();
 			OnAttach();
 		}
-		virtual void Detach() final { OnDetach(); }
+		virtual void Detach() final
+		{
+			OnDetach();
+			// Do not unset app, the client should be allowed to keep it for later
+			// If they really don't want it, they can unset app in OnDetach()
+			// this->app = nullptr;
+		}
 		virtual void Update() final { OnUpdate(); }
 		virtual void Show() final { OnShow(visible); }
 		virtual void Hide() final { OnHide(visible); }
@@ -65,12 +71,19 @@ namespace Surface {
 		virtual void OnHide(bool& is_visible) { is_visible = false; }
 		virtual void OnEvent(Event& event) {}
 
-		virtual void Attach(Application* app)
+		virtual void Attach() final
 		{
-			this->app = app;
+			// Set app as a courtesy, client doesn't have to use it
+			this->app = Application::GetApp();
 			OnAttach();
 		}
-		virtual void Detach() final { OnDetach(); }
+		virtual void Detach() final
+		{
+			OnDetach();
+			// Do not unset app, the client should be allowed to keep it for later
+			// If they really don't want it, they can unset app in OnDetach()
+			// this->app = nullptr;
+		}
 		virtual void Update() final { OnUpdate(); }
 		virtual void Show() final { OnShow(visible); }
 		virtual void Hide() final { OnHide(visible); }
@@ -104,9 +117,8 @@ namespace Surface {
 	{
 		friend class Application;
 	public:
-		View(Application* app, const std::string& name)
+		View(const std::string& name)
 		{
-			this->app = app;
 			this->name = name;
 		}
 		~View() { Clear(); }
@@ -121,10 +133,10 @@ namespace Surface {
 		// Adds layers, which are rendered in order such that the first layer is above everything else.
 		// No two layers may share the same name!! Returns true if the layer was added, false if
 		// one with the same name already exists.
-		bool AddLayer(Layer* layer) { return Add<Layer>(app, layer, layers); }
+		bool AddLayer(Layer* layer) { return Add<Layer>(layer, layers); }
 
 		// Adds overlays, which are rendered after all layers
-		bool AddOverlay(Overlay* overlay) { return Add<Overlay>(app, overlay, overlays); }
+		bool AddOverlay(Overlay* overlay) { return Add<Overlay>(overlay, overlays); }
 
 		// Removes a layer, by name or pointer
 		void RemoveLayer(Layer* layer) { Remove<Layer>(layer, layers); }
@@ -137,12 +149,11 @@ namespace Surface {
 		Overlay* FindOverlay(const std::string& name) { return Find<Overlay>(name, overlays); }
 
 	private:
-		Application* app = nullptr;
 		std::string name;
 		LayerVector layers;
 		OverlayVector overlays;
 
-		template<typename Layer> static inline bool Add(Application* app, Layer* layer, std::vector<Layer*>& lvec)
+		template<typename Layer> static inline bool Add(Layer* layer, std::vector<Layer*>& lvec)
 		{
 			// Ensure layer with same name doesn't exist
 			for (Layer* other : lvec)
@@ -151,7 +162,7 @@ namespace Surface {
 					return false;
 			}
 			lvec.push_back(layer);
-			layer->Attach(app);
+			layer->Attach();
 			return true;
 		}
 

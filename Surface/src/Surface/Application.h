@@ -4,8 +4,8 @@
 #include "Window.h"
 #include "Event.h"
 #include "Event/Handler.h"
-#include "View.h"
 #include <chrono>
+#include <glad/glad.h>
 
 #define MICRO_TIME std::chrono::time_point<std::chrono::steady_clock>
 #define MICRO_CLOCK std::chrono::high_resolution_clock
@@ -13,8 +13,12 @@
 
 namespace Surface {
 
+	class View;
+
 	class SURF_API Application
 	{
+	private:
+		static Application* app;
 	public:
 		Application();
 		Application(const WindowProperties& properties);
@@ -32,6 +36,8 @@ namespace Surface {
 		std::unique_ptr<Window> window;
 		std::vector<View*> views;
 		unsigned int views_count = 0;
+
+		inline static Application* GetApp() { return app; }
 
 		virtual void OnEvent(Event& event) {}
 		virtual void OnTick(const double &deltaTime) {}

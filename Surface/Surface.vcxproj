@@ -156,10 +156,9 @@
     <ClInclude Include="src\Surface\Event.h" />
     <ClInclude Include="src\Surface\Event\Handler.h" />
     <ClInclude Include="src\Surface\Event\Types.h" />
-    <ClInclude Include="src\Surface\GUI\ImGuiOverlay.h" />
     <ClInclude Include="src\Surface\GUI\GLRenderer.h" />
+    <ClInclude Include="src\Surface\GUI\ImGuiOverlay.h" />
     <ClInclude Include="src\Surface\Input.h" />
-    <ClInclude Include="src\Surface\Input\GLFWInput.h" />
     <ClInclude Include="src\Surface\Log.h" />
     <ClInclude Include="src\Surface\View.h" />
     <ClInclude Include="src\Surface\Window.h" />
@@ -168,8 +167,8 @@
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="src\Surface\Application.cpp" />
-    <ClCompile Include="src\Surface\GUI\ImGuiOverlay.cpp" />
     <ClCompile Include="src\Surface\GUI\GLRenderer.cpp" />
+    <ClCompile Include="src\Surface\GUI\ImGuiOverlay.cpp" />
     <ClCompile Include="src\Surface\Log.cpp" />
     <ClCompile Include="src\Surface\Window\GLWindow.cpp" />
     <ClCompile Include="src\spch.cpp">

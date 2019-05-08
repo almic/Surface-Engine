@@ -23,7 +23,7 @@ namespace Surface {
 			WindowForm::WINDOWED_FULLSCREEN
 		))
 		{
-			View* main = new View(this, "Main");
+			View* main = new View("Main");
 
 			Overlay* menu = new MenuLayer();
 

@@ -1,11 +1,13 @@
 #include "spch.h"
 
 #include "Application.h"
-#include <glad/glad.h>
+#include "View.h"
 
 namespace Surface {
 
 #define BIND_APP_FN(x) std::bind(&Application::x, this, std::placeholders::_1)
+
+	Application* Application::app = nullptr;
 
 	Application::Application()
 	{
@@ -16,6 +18,7 @@ namespace Surface {
 	{
 		window = std::unique_ptr<Window>(Window::Create(properties));
 		window->SetEventCallback(BIND_APP_FN(SendEvent));
+		app = this;
 	}
 
 	Application::~Application()
