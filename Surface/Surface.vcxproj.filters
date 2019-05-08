@@ -10,6 +10,9 @@
     <Filter Include="Surface\GUI">
       <UniqueIdentifier>{8269F01B-EE1E-6911-7713-63E8E3C75F15}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Surface\Input">
+      <UniqueIdentifier>{ED6DE3D9-592E-5F10-2269-A88D8EE8A3EC}</UniqueIdentifier>
+    </Filter>
     <Filter Include="Surface\Window">
       <UniqueIdentifier>{95889D36-8156-913C-6AEA-016356576DA1}</UniqueIdentifier>
     </Filter>
@@ -40,6 +43,9 @@
     <ClInclude Include="src\Surface\GUI\ImGuiOverlay.h">
       <Filter>Surface\GUI</Filter>
     </ClInclude>
+    <ClInclude Include="src\Surface\Input.h">
+      <Filter>Surface</Filter>
+    </ClInclude>
     <ClInclude Include="src\Surface\Log.h">
       <Filter>Surface</Filter>
     </ClInclude>
@@ -49,8 +55,6 @@
     <ClInclude Include="src\Surface\Window.h">
       <Filter>Surface</Filter>
     </ClInclude>
-    <ClInclude Include="src\Surface\Input.h" />
-    <ClInclude Include="src\Surface\Input\GLFWInput.h" />
     <ClInclude Include="src\Surface\Window\GLWindow.h">
       <Filter>Surface\Window</Filter>
     </ClInclude>
@@ -65,6 +69,12 @@
     </ClCompile>
     <ClCompile Include="src\Surface\GUI\ImGuiOverlay.cpp">
       <Filter>Surface\GUI</Filter>
+    </ClCompile>
+    <ClCompile Include="src\Surface\Input.cpp">
+      <Filter>Surface</Filter>
+    </ClCompile>
+    <ClCompile Include="src\Surface\Input\GLInput.cpp">
+      <Filter>Surface\Input</Filter>
     </ClCompile>
     <ClCompile Include="src\Surface\Log.cpp">
       <Filter>Surface</Filter>

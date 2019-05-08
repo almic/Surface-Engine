@@ -169,6 +169,8 @@
     <ClCompile Include="src\Surface\Application.cpp" />
     <ClCompile Include="src\Surface\GUI\GLRenderer.cpp" />
     <ClCompile Include="src\Surface\GUI\ImGuiOverlay.cpp" />
+    <ClCompile Include="src\Surface\Input.cpp" />
+    <ClCompile Include="src\Surface\Input\GLInput.cpp" />
     <ClCompile Include="src\Surface\Log.cpp" />
     <ClCompile Include="src\Surface\Window\GLWindow.cpp" />
     <ClCompile Include="src\spch.cpp">
