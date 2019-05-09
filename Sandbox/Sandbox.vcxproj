@@ -79,7 +79,7 @@
       <PrecompiledHeader>NotUsing</PrecompiledHeader>
       <WarningLevel>Level3</WarningLevel>
       <PreprocessorDefinitions>SURF_PLATFORM_WINDOWS;SURF_DEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <AdditionalIncludeDirectories>..\Surface\src;..\Surface\vendor\GLFW\include;..\Surface\vendor\Glad\include;..\Surface\vendor\imgui;..\Surface\vendor\spdlog\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>..\Surface\src;..\Surface\vendor\Glad\include;..\Surface\vendor\GLFW\include;..\Surface\vendor\glm;..\Surface\vendor\imgui;..\Surface\vendor\spdlog\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <DebugInformationFormat>EditAndContinue</DebugInformationFormat>
       <Optimization>Disabled</Optimization>
       <RuntimeLibrary>MultiThreadedDebugDLL</RuntimeLibrary>
@@ -95,7 +95,7 @@
       <PrecompiledHeader>NotUsing</PrecompiledHeader>
       <WarningLevel>Level3</WarningLevel>
       <PreprocessorDefinitions>SURF_PLATFORM_WINDOWS;SURF_RELEASE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <AdditionalIncludeDirectories>..\Surface\src;..\Surface\vendor\GLFW\include;..\Surface\vendor\Glad\include;..\Surface\vendor\imgui;..\Surface\vendor\spdlog\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>..\Surface\src;..\Surface\vendor\Glad\include;..\Surface\vendor\GLFW\include;..\Surface\vendor\glm;..\Surface\vendor\imgui;..\Surface\vendor\spdlog\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <Optimization>Full</Optimization>
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
@@ -115,7 +115,7 @@
       <PrecompiledHeader>NotUsing</PrecompiledHeader>
       <WarningLevel>Level3</WarningLevel>
       <PreprocessorDefinitions>SURF_PLATFORM_WINDOWS;SURF_DIST;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <AdditionalIncludeDirectories>..\Surface\src;..\Surface\vendor\GLFW\include;..\Surface\vendor\Glad\include;..\Surface\vendor\imgui;..\Surface\vendor\spdlog\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>..\Surface\src;..\Surface\vendor\Glad\include;..\Surface\vendor\GLFW\include;..\Surface\vendor\glm;..\Surface\vendor\imgui;..\Surface\vendor\spdlog\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <Optimization>Full</Optimization>
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>

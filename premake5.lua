@@ -6,14 +6,15 @@ workspace "Surface"
 outputdir = "%{cfg.buildcfg}-%{cfg.system}-%{cfg.architecture}"
 
 IncludeDir = {}
-IncludeDir["GLFW"] = "Surface/vendor/GLFW/include"
 IncludeDir["Glad"] = "Surface/vendor/Glad/include"
+IncludeDir["GLFW"] = "Surface/vendor/GLFW/include"
+IncludeDir["glm"] = "Surface/vendor/glm"
 IncludeDir["imgui"] = "Surface/vendor/imgui"
 IncludeDir["spdlog"] = "Surface/vendor/spdlog/include"
 
 group "Dependencies"
-	include "Surface/vendor/GLFW"
 	include "Surface/vendor/Glad"
+	include "Surface/vendor/GLFW"
 	include "Surface/vendor/imgui"
 
 group ""
@@ -32,14 +33,17 @@ project "Surface"
 	files
 	{
 		"%{prj.name}/src/**.h",
-		"%{prj.name}/src/**.cpp"
+		"%{prj.name}/src/**.cpp",
+		"%{prj.name}/vendor/glm/glm/**.hpp",
+		"%{prj.name}/vendor/glm/glm/**.inl"
 	}
 
 	includedirs
 	{
 		"%{prj.name}/src",
-		"%{IncludeDir.GLFW}",
 		"%{IncludeDir.Glad}",
+		"%{IncludeDir.GLFW}",
+		"%{IncludeDir.glm}",
 		"%{IncludeDir.imgui}",
 		"%{IncludeDir.spdlog}"
 	}
@@ -98,8 +102,9 @@ project "Sandbox"
 	includedirs
 	{
 		"Surface/src",
-		"%{IncludeDir.GLFW}",
 		"%{IncludeDir.Glad}",
+		"%{IncludeDir.GLFW}",
+		"%{IncludeDir.glm}",
 		"%{IncludeDir.imgui}",
 		"%{IncludeDir.spdlog}"
 	}
