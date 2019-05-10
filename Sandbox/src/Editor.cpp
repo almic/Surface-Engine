@@ -20,7 +20,7 @@ namespace Surface {
 			false,     // Leaves position unset
 			false,     // Disables OpenGL vsync
 			60,        // Framerate "capped" to 60FPS
-			WindowForm::WINDOWED_FULLSCREEN
+			WindowForm::MAXIMIZED
 		))
 		{
 			View* main = new View("Main");
