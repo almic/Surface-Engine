@@ -4,7 +4,12 @@
 #include <Surface/GUI/ImGuiOverlay.h>
 
 #include <glm/vec3.hpp>
+#include <glm/mat4x4.hpp>
+
 #include <glm/geometric.hpp>
+
+#include <glm/gtc/matrix_transform.hpp>
+#include <glm/ext/matrix_clip_space.hpp>
 
 using namespace Surface;
 
@@ -242,15 +247,153 @@ public:
 
 		if (ImGui::CollapsingHeader("Matrix"))
 		{
+			if (ImGui::TreeNode("Views"))
+			{
+				ImGui::NewLine();
+				ImGui::Text("Use the inputs and buttons to create matrices");
+				ImGui::Spacing();
 
+				static float m1_00, m1_01, m1_02, m1_03,
+				             m1_10, m1_11, m1_12, m1_13,
+				             m1_20, m1_21, m1_22, m1_23,
+				             m1_30, m1_31, m1_32, m1_33;
+
+				static glm::mat4 m1 = {
+					m1_00, m1_01, m1_02, m1_03,
+					m1_10, m1_11, m1_12, m1_13,
+					m1_20, m1_21, m1_22, m1_23,
+					m1_30, m1_31, m1_32, m1_33
+				};
+
+				static glm::mat4 m2;
+
+				ImGui::Text("Frustum");
+				static float fl, fr, fb, ft, fn, ff;
+				ImGui::InputFloat("Left", &fl, .1f, 1.f);
+				ImGui::InputFloat("Right", &fr, .1f, 1.f);
+				ImGui::InputFloat("Top", &ft, .1f, 1.f);
+				ImGui::InputFloat("Bottom", &fb, .1f, 1.f);
+				ImGui::InputFloat("Near", &fn, .1f, 1.f);
+				ImGui::InputFloat("Far", &ff, .1f, 1.f);
+				if (ImGui::Button("Create Frustum"))
+				{
+					m2 = glm::frustum(fl, fr, fb, ft, fn, ff);
+				}
+				ImGui::NewLine();
+
+				ImGui::Text("Perspective");
+				static float pfov, pasp_x, pasp_y, pn, pf;
+				ImGui::InputFloat("FOV", &pfov, .1f, 1.f);
+				ImGui::InputFloat("Aspect Ratio Width", &pasp_x, .1f, 1.f);
+				ImGui::InputFloat("Aspect Ratio Height", &pasp_y, .1f, 1.f);
+				ImGui::InputFloat("Near ", &pn, .1f, 1.f);
+				ImGui::InputFloat("Far (0 = infinite)", &pf, .1f, 1.f);
+				if (ImGui::Button("Create Perspective"))
+				{
+					if (pf == 0)
+					{
+						m2 = glm::infinitePerspective(pfov, pasp_x / pasp_y, pn);
+					}
+					else
+					{
+						m2 = glm::perspective(pfov, pasp_x / pasp_y, pn, pf);
+					}
+				}
+				ImGui::NewLine();
+
+				ImGui::Text("Orthogonal");
+				static float ol, or, ob, ot;
+				ImGui::InputFloat("Left ", &ol, .1f, 1.f);
+				ImGui::InputFloat("Right ", &or, .1f, 1.f);
+				ImGui::InputFloat("Top ", &ot, .1f, 1.f);
+				ImGui::InputFloat("Bottom ", &ob, .1f, 1.f);
+				if (ImGui::Button("Create Orthogonal"))
+				{
+					m2 = glm::ortho(ol, or, ob, ot);
+				}
+				ImGui::NewLine();
+
+				ImGui::Text("Orthogonal (Clipped)");
+				static float ocl, ocr, ocb, oct, ocn, ocf;
+				ImGui::InputFloat("Left  ", &ocl, .1f, 1.f);
+				ImGui::InputFloat("Right  ", &ocr, .1f, 1.f);
+				ImGui::InputFloat("Top  ", &oct, .1f, 1.f);
+				ImGui::InputFloat("Bottom  ", &ocb, .1f, 1.f);
+				ImGui::InputFloat("Near  ", &ocn, .1f, 1.f);
+				ImGui::InputFloat("Far ", &ocf, .1f, 1.f);
+				if (ImGui::Button("Create Orthogonal (Clipped)"))
+				{
+					m2 = glm::ortho(ocl, ocr, ocb, oct, ocn, ocf);
+				}
+				ImGui::NewLine();
+
+				ImGui::Spacing();
+				ImGui::Text("Result:\n[ %.3f , %.3f , %.3f , %.3f ]\n[ %.3f , %.3f , %.3f , %.3f ]\n[ %.3f , %.3f , %.3f , %.3f ]\n[ %.3f , %.3f , %.3f , %.3f ]",
+					m2[0][0], m2[0][1], m2[0][2], m2[0][3],
+					m2[1][0], m2[1][1], m2[1][2], m2[1][3],
+					m2[2][0], m2[2][1], m2[2][2], m2[2][3],
+					m2[3][0], m2[3][1], m2[3][2], m2[3][3]);
+				ImGui::NewLine();
+
+				ImGui::TreePop();
+			}
+
+			if (ImGui::TreeNode("Transformation"))
+			{
+				ImGui::NewLine();
+				ImGui::Text("Create and transform matrix with a vector");
+				ImGui::Spacing();
+				
+				static float m3_00 = 1.f, m3_01 = 1.f, m3_02 = 1.f, m3_03 = 1.f,
+					         m3_10 = 1.f, m3_11 = 1.f, m3_12 = 1.f, m3_13 = 1.f,
+					         m3_20 = 1.f, m3_21 = 1.f, m3_22 = 1.f, m3_23 = 1.f,
+					         m3_30 = 1.f, m3_31 = 1.f, m3_32 = 1.f, m3_33 = 1.f;
+
+				static glm::mat4 m3 = {
+					m3_00, m3_01, m3_02, m3_03,
+					m3_10, m3_11, m3_12, m3_13,
+					m3_20, m3_21, m3_22, m3_23,
+					m3_30, m3_31, m3_32, m3_33
+				};
+
+				ImGui::Text("Matrix to tranform:");
+				ImGui::InputFloat4("##R1", (float*)&m3[0]);
+				ImGui::InputFloat4("##R2", (float*)&m3[1]);
+				ImGui::InputFloat4("##R3", (float*)&m3[2]);
+				ImGui::InputFloat4("##R4", (float*)&m3[3]);
+				ImGui::NewLine();
+
+				static float mt_x, mt_y, mt_z, mt_a;
+				static glm::vec3 mtv = { mt_x, mt_y, mt_z };
+				static glm::mat4 m4;
+
+				ImGui::Text("Parameters:");
+				ImGui::DragFloat3("Vector", (float*)&mtv, .01f);
+				ImGui::DragFloat("Angle (rotate only)", &mt_a);
+
+				ImGui::Spacing();
+				if (ImGui::Button("Rotate"))
+					m4 = glm::rotate(m3, glm::radians(mt_a), mtv);
+
+				ImGui::SameLine();
+				if (ImGui::Button("Scale"))
+					m4 = glm::scale(m3, mtv);
+
+				ImGui::SameLine();
+				if (ImGui::Button("Translate"))
+					m4 = glm::translate(m3, mtv);
+
+				ImGui::Spacing();
+				ImGui::Text("Result:\n[ %.3f , %.3f , %.3f , %.3f ]\n[ %.3f , %.3f , %.3f , %.3f ]\n[ %.3f , %.3f , %.3f , %.3f ]\n[ %.3f , %.3f , %.3f , %.3f ]",
+					m4[0][0], m4[0][1], m4[0][2], m4[0][3],
+					m4[1][0], m4[1][1], m4[1][2], m4[1][3],
+					m4[2][0], m4[2][1], m4[2][2], m4[2][3],
+					m4[3][0], m4[3][1], m4[3][2], m4[3][3]);
+				ImGui::NewLine();
+
+				ImGui::TreePop();
+			}
 		}
-
-		if (ImGui::CollapsingHeader("Quaternion"))
-		{
-
-		}
-
-		//if (ImGui::CollapsingHeader(""))
 
 		ImGui::End();
 	}
