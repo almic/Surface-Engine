@@ -2,11 +2,15 @@
 
 #ifdef SURF_PLATFORM_WINDOWS
 
+#ifdef SURF_BUILD_DLL
 	#ifdef SURF_BUILD
 		#define SURF_API __declspec(dllexport)
 	#else
 		#define SURF_API __declspec(dllimport)
 	#endif // SURF_BUILD
+#else
+#define SURF_API
+#endif
 
 #endif // SURF_PLATFORM_WINDOWS
 
