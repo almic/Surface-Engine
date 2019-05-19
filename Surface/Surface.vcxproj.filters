@@ -69,6 +69,9 @@
     <ClInclude Include="src\Surface\GUI\ImGuiOverlay.h">
       <Filter>src\Surface\GUI</Filter>
     </ClInclude>
+    <ClInclude Include="src\Surface\IO.h">
+      <Filter>src\Surface</Filter>
+    </ClInclude>
     <ClInclude Include="src\Surface\Input.h">
       <Filter>src\Surface</Filter>
     </ClInclude>
@@ -1189,6 +1192,9 @@
     </ClCompile>
     <ClCompile Include="src\Surface\GUI\ImGuiOverlay.cpp">
       <Filter>src\Surface\GUI</Filter>
+    </ClCompile>
+    <ClCompile Include="src\Surface\IO.cpp">
+      <Filter>src\Surface</Filter>
     </ClCompile>
     <ClCompile Include="src\Surface\Input.cpp">
       <Filter>src\Surface</Filter>
