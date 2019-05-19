@@ -9,11 +9,6 @@ namespace Surface {
 
 	Application* Application::app = nullptr;
 
-	Application::Application()
-	{
-		Application(WindowProperties());
-	}
-
 	Application::Application(const WindowProperties& properties)
 	{
 		window = std::unique_ptr<Window>(Window::Create(properties));

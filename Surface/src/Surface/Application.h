@@ -20,12 +20,8 @@ namespace Surface {
 	private:
 		static Application* app;
 	public:
-		Application();
-		Application(const WindowProperties& properties);
+		Application(const WindowProperties& properties = WindowProperties());
 		virtual ~Application();
-		
-		/*static Application* app;
-		inline static Application& Get() { return *app; }*/
 
 		bool running = true;
 		
