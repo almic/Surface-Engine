@@ -4,8 +4,35 @@
     <Filter Include="Overlays">
       <UniqueIdentifier>{FAD240D3-E69F-9BDE-0FB9-8986FBE4D06C}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Overlays\Gui">
+      <UniqueIdentifier>{4EC3205D-3A26-B001-E3AB-E8B7CFED7B84}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="src\Overlays\Gui\ClosePopup.h">
+      <Filter>Overlays\Gui</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Overlays\Gui\ConsoleWindow.h">
+      <Filter>Overlays\Gui</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Overlays\Gui\GlmWindow.h">
+      <Filter>Overlays\Gui</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Overlays\Gui\HierarchyWindow.h">
+      <Filter>Overlays\Gui</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Overlays\Gui\LevelWindow.h">
+      <Filter>Overlays\Gui</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Overlays\Gui\MainMenuBar.h">
+      <Filter>Overlays\Gui</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Overlays\Gui\ObjectPropertyWindow.h">
+      <Filter>Overlays\Gui</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Overlays\Gui\UserSettingsWindow.h">
+      <Filter>Overlays\Gui</Filter>
+    </ClInclude>
     <ClInclude Include="src\Overlays\MenuLayer.h">
       <Filter>Overlays</Filter>
     </ClInclude>

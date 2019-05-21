@@ -19,6 +19,7 @@ namespace Surface {
 		ImGuiOverlay(const std::string& name);
 
 		virtual void ShowGui();
+		virtual void Initialize();
 		virtual void OnAttach() override final;
 		virtual void OnUpdate() override final;
 		virtual void OnEvent(Event& event) override final;

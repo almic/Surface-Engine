@@ -131,6 +131,14 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClInclude Include="src\Overlays\Gui\ClosePopup.h" />
+    <ClInclude Include="src\Overlays\Gui\ConsoleWindow.h" />
+    <ClInclude Include="src\Overlays\Gui\GlmWindow.h" />
+    <ClInclude Include="src\Overlays\Gui\HierarchyWindow.h" />
+    <ClInclude Include="src\Overlays\Gui\LevelWindow.h" />
+    <ClInclude Include="src\Overlays\Gui\MainMenuBar.h" />
+    <ClInclude Include="src\Overlays\Gui\ObjectPropertyWindow.h" />
+    <ClInclude Include="src\Overlays\Gui\UserSettingsWindow.h" />
     <ClInclude Include="src\Overlays\MenuLayer.h" />
   </ItemGroup>
   <ItemGroup>

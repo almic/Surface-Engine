@@ -42,6 +42,11 @@ namespace Surface {
 		demoWindow.Show();
 	}
 
+	void ImGuiOverlay::Initialize()
+	{
+
+	}
+
 	void ImGuiOverlay::OnAttach()
 	{
 		if (initialized) return;
@@ -93,6 +98,7 @@ namespace Surface {
 		cursors[ImGuiMouseCursor_Hand] = glfwCreateStandardCursor(GLFW_HAND_CURSOR);
 
 		Gl_Gui_Init();
+		Initialize();
 	}
 
 	void ImGuiOverlay::OnUpdate()
