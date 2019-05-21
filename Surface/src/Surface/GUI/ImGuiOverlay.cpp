@@ -10,6 +10,28 @@ namespace Surface {
 	GLFWcursor* ImGuiOverlay::cursors[ImGuiMouseCursor_COUNT] = { 0 };
 	bool ImGuiOverlay::mouseJustPressed[5] = { false, false, false, false, false };
 
+	// Example window
+	class DemoWindow : public Gui::Window
+	{
+	public:
+		DemoWindow() : Window("Demo") {}
+
+		// Gui::Window already defines a GuiBegin(), which uses the name and visibility to create a new window
+
+		virtual void Body(ImGuiWindow* window) override
+		{
+			// The current window is always going to be this window
+			ImGui::Text("Put your dear imgui commands here.");
+			// Optionally, you can go fuck yourself
+		}
+
+		// Since you'll be creating windows with ImGui::Begin(),
+		// you can just slap yourself and call me Sally, because
+		// Gui::Window already calls ImGui::End() for you.
+	};
+
+	DemoWindow ImGuiOverlay::demoWindow = DemoWindow();
+
 	ImGuiOverlay::ImGuiOverlay(const std::string& name)
 			: Overlay(name)
 	{
@@ -17,7 +39,7 @@ namespace Surface {
 
 	void ImGuiOverlay::ShowGui()
 	{
-		ImGui::ShowDemoWindow(&show);
+		demoWindow.Show();
 	}
 
 	void ImGuiOverlay::OnAttach()
@@ -31,6 +53,7 @@ namespace Surface {
 		io.BackendFlags |= ImGuiBackendFlags_HasMouseCursors;
 		io.BackendFlags |= ImGuiBackendFlags_HasSetMousePos;
 		io.ConfigFlags |= ImGuiConfigFlags_NavEnableGamepad;
+		io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;
 		io.BackendPlatformName = "Surface::ImGuiOverlay";
 
 		// Keyboard mapping
@@ -236,7 +259,7 @@ namespace Surface {
 	{
 		ImGuiIO& io = ImGui::GetIO();
 		if (event.character > 0 && event.character < 0x10000)
-			io.AddInputCharacter((unsigned short)event.character);
+			io.AddInputCharacter((unsigned int)event.character);
 		return !io.WantCaptureKeyboard;
 	}
 

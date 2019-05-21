@@ -1,0 +1,539 @@
+#include "spch.h"
+
+#include "Gui.h"
+
+//#include "Surface/IO.h"
+
+namespace Surface {
+namespace Gui {
+
+	std::unordered_map<
+		WindowType,
+		std::pair<
+		WindowFlags, std::vector<Window*>
+		>
+	> Window::window_groups = {};
+
+	ImGuiID Window::unique_class = -1;
+
+	bool Builder::BeginLayout(ImGuiID windowId, bool force)
+	{
+		// Only set layout if not already set or if `force` is true
+		if (!force && DockBuilderGetNode(windowId) != NULL)
+			return;
+		else if (force && DockBuilderGetNode(windowId) != NULL)
+			DockBuilderRemoveNodeDockedWindows(windowId);
+		else
+			DockBuilderRemoveNode(windowId);
+		
+		DockBuilderAddNode(windowId, ImGuiDockNodeFlags_DockSpace | ImGuiDockNodeFlags_CentralNode);
+
+		main_dock = windowId;
+
+		// This saves the dock locations for each group as we create them, as well as settings
+		Window::window_groups.clear();
+
+		Window* lastUniqueWindow = nullptr;
+
+		// First pass gets an idea of the layout defined, to guarantee that the entire space is used.
+		for (Window* window : windows)
+		{
+			if (!window->visible) continue;
+			if ((bool)(window->flags & WindowFlags_GroupWithSameType) && window->type != WindowType::ANY)
+				if (Window::window_groups.find(window->type) == Window::window_groups.end())
+				{
+					Window::window_groups[window->type] = { WindowFlags_Default, {window} };
+					lastUniqueWindow = window;
+				}
+				else
+					Window::window_groups[window->type].second.push_back(window);
+			else
+				lastUniqueWindow = window;
+		}
+
+		// No visible windows, WARN and return
+		if (!lastUniqueWindow)
+		{
+			SURF_CORE_WARN("Gui::Builder::BuildLayout did nothing because no windows were set to be visible");
+			return;
+		}
+
+		// Print warnings if groups have different tab bar settings
+		for (auto group : Window::window_groups)
+		{
+			bool hasClose     = false,
+			     hasNoClose   = false,
+			     forceNoClose = false;
+
+			bool hasTab     = false,
+			     hasNoTab   = false,
+			     forceNoTab = false;
+
+			for (Window* window : group.second.second)
+			{
+				// WindowFlags_DisableClose
+				if ((bool)(window->flags & WindowFlags_DisableClose))
+					hasNoClose = true;
+				else
+					hasClose = true;
+
+				if ((bool)(window->flags & WindowFlags_DisableCloseForce))
+					forceNoClose = true;
+
+				// WindowFlags_DisableTab
+				if ((bool)(window->flags & WindowFlags_DisableTab))
+					hasNoTab = true;
+				else
+					hasTab = true;
+
+				if ((bool)(window->flags & WindowFlags_DisableTabForce))
+					forceNoTab = true;
+			}
+
+			// Apply group settings
+			if (hasNoClose)
+				group.second.first |= WindowFlags_DisableClose;
+
+			if (hasNoTab)
+				group.second.first |= WindowFlags_DisableTab;
+
+			if (!forceNoClose && hasNoClose && hasClose)
+			{
+				SURF_CORE_WARN("\
+Window grouping of type \"{0}\" defined with Gui::Builder has inconsistent use\n\
+`WindowFlags_DisableClose`, this option will take precedence over other windows in the group.\n\
+Please consider using consistent flags on windows, or use `WindowFlags_DisableCloseForce`\n\
+to supress this warning.", WindowTypeToString(group.first));
+			}
+
+			if (!forceNoTab && hasNoTab && hasTab)
+			{
+				SURF_CORE_WARN("\
+Window grouping of type \"{0}\" defined with Gui::Builder has inconsistent use\n\
+`WindowFlags_DisableTab`, this option will take precedence over other windows in the group.\n\
+Please consider using consistent flags on windows, or use `WindowFlags_DisableTabForce`\n\
+to supress this warning.", WindowTypeToString(group.first));
+			}
+		}
+
+		Window* previousWindow = nullptr;
+
+		// No groupings, just split and dock normally
+		if (Window::window_groups.size() == 0)
+		{
+			for (Window* window : windows)
+			{
+				ImGuiID dock_id;
+				// Always split and dock previous window
+				if (previousWindow)
+				{
+					dock_id = DockBuilderSplitNode(dock_main, previousWindow->layout.Direction, previousWindow->layout.SplitRatio, NULL, &dock_main);
+					
+					ApplyDock(previousWindow, dock_id);
+				}
+
+				// Current window is last visible, finish now
+				if (window == lastUniqueWindow)
+				{
+					// Add to remaining space if no direction is set
+					if (window->layout.Direction == ImGuiDir_None)
+						dock_id = dock_main;
+					else
+						dock_id = DockBuilderSplitNode(dock_main, window->layout.Direction, window->layout.SplitRatio, NULL, &dock_main);
+					
+					ApplyDock(window, dock_id);
+
+					DockBuilderFinish(windowId);
+					return;
+				}
+
+				previousWindow = window;
+				if (!window->visible)
+					previousWindow = nullptr;
+			}
+		}
+		// Groups exist, it's going to get hot in here
+		else
+		{
+			// Stores group dock ids as we create them
+			std::unordered_map<WindowType, ImGuiID> group_ids;
+			for (Window* window : windows)
+			{
+				ImGuiID dock_id;
+				if (previousWindow)
+				{
+					// Always split and dock if not grouped
+					if (!(bool)(previousWindow->flags & WindowFlags_GroupWithSameType))
+					{
+						dock_id = DockBuilderSplitNode(dock_main, previousWindow->layout.Direction, previousWindow->layout.SplitRatio, NULL, &dock_main);
+						
+						ApplyDock(previousWindow, dock_id);
+					}
+					// If grouped and not added, then add entire group in one step
+					else if (group_ids.find(previousWindow->type) == group_ids.end())
+					{
+						dock_id = group_ids[previousWindow->type] = DockBuilderSplitNode(dock_main, previousWindow->layout.Direction, previousWindow->layout.SplitRatio, NULL, &dock_main);
+						
+						for (Window* group_window : Window::window_groups[previousWindow->type].second)
+						{
+							ApplyDock(group_window, dock_id);
+						}
+					}
+					// Otherwise, it must have already been added, so do nothing
+				}
+
+				// Current window is last visible (or last unique group)
+				if (window == lastUniqueWindow)
+				{
+					// Add to remaining space if no direction is set
+					if (window->layout.Direction == ImGuiDir_None)
+						dock_id = dock_main;
+					else
+						dock_id = DockBuilderSplitNode(dock_main, window->layout.Direction, window->layout.SplitRatio, NULL, &dock_main);
+
+					if (!(bool)(window->flags & WindowFlags_GroupWithSameType) || window->type == WindowType::ANY)
+					{
+						ApplyDock(window, dock_id);
+					}
+					else
+					{
+						for (Window* group_window : Window::window_groups[window->type].second)
+						{
+							ApplyDock(group_window, dock_id);
+						}
+					}
+					DockBuilderFinish(windowId);
+					return;
+				}
+
+				previousWindow = window;
+				if (!window->visible)
+					previousWindow = nullptr;
+			}
+		}
+		DockBuilderFinish(windowId);
+	}
+
+	void Builder::ApplyDock(Window* window, ImGuiID dock_id)
+	{
+		ImGuiDockNode* nd = DockBuilderGetNode(dock_id);
+		bool in_group = (bool)(window->flags & WindowFlags_GroupWithSameType);
+		WindowFlags group_flags = (Window::window_groups.find(window->type) != Window::window_groups.end()) ? Window::window_groups[window->type].first : 0;
+
+		if ((bool)((window->flags | (in_group ? group_flags : 0)) & WindowFlags_AutoHideTab))
+			nd->LocalFlags |= ImGuiDockNodeFlags_AutoHideTabBar;
+
+		if ((bool)((window->flags | (in_group ? group_flags : 0)) & (WindowFlags_DisableClose | WindowFlags_DisableCloseForce)))
+		{
+			nd->HasCloseButton = false;
+			// Must also do this, otherwise the window will still render the close button
+			window->flags |= WindowFlags_DisableClose;
+		}
+
+		if ((bool)(window->flags & (WindowFlags_DisableTab | WindowFlags_DisableTabForce)))
+			nd->LocalFlags |= ImGuiDockNodeFlags_NoTabBar;
+
+		DockBuilderDockWindow(window->name, dock_id);
+	}
+
+
+	// Order of added windows matters!!
+	ImGuiID Builder::Add(Window* window, WindowFlags flags)
+	{
+		for (Window* other : windows)
+		{
+			if (other->name == window->name)
+			{
+				SURF_CORE_ERROR("Gui::Builder::Add failed, window with name \"{0}\" already added!", window->name);
+				return false;
+			}
+		}
+
+		if (flags != WindowFlags_Unchanged)
+		{
+			window->flags = flags;
+			window->imGuiClass.DockingAllowUnclassed = !(bool)(flags & WindowFlags_NoDockingUnclassed);
+		}
+
+		windows.push_back(window);
+		return true;
+	}
+
+	ImGuiID Builder::AddOther(Window* window, WindowFlags flags, ImGuiDir direction, float ratio, WindowType type, bool forceType)
+	{
+		if (ratio == 0.f) ratio = window->layout.SplitRatio;
+		window->layout = { direction, ratio };
+		if (type != WindowType::ANY || forceType)
+		{
+			window->type = type;
+			window->imGuiClass.ClassId = (ImGuiID)type;
+		}
+		Add(window, flags);
+	}
+
+	// Must be called AFTER adding windows, will overwrite layout styles. You may have to call BuildLayout(force = true) to update the layout.
+	/*bool Builder::LoadLayout(const std::string &layout)
+	{
+		// Parse layout
+		std::unordered_map<std::string, Window> map;
+		int state = 0;
+		size_t length = layout.size();
+		std::string name, dir, split;
+		WindowFlags visible;
+        #define BUILDER_FAIL(...) SURF_CORE_ERROR(__VA_ARGS__); state = -1; break
+        #define STATE(x) state = x; continue
+		for (int index = 0; index < length; index++)
+		{
+			char c = layout[index];
+			
+			// [name:1:dir:split]
+			if (state == 0)
+			{
+				if (c == '[')
+				{ STATE(1); }
+				else
+				{ BUILDER_FAIL("Gui::Builder::LoadLayout failed, unexpected '{0}', expected a '['", c); }
+			}
+			
+			// name:1:dir:split]
+			if (state == 1)
+			{
+				// :1:dir:split]
+				if (c == ':')
+				{
+					if (name.length() < 1) { BUILDER_FAIL("Gui::Builder::LoadLayout failed, unexpected ':' with 0 length name"); }
+					STATE(2);
+				}
+				// _:1:dir:split]
+				else name += c;
+				
+			}
+
+			// 1:dir:split]
+			if (state == 2)
+			{
+				// Expecting only a 0 or 1, for invisible or visible
+				if (c == '0') visible = WindowFlags_Hidden;
+				else if (c == '1') visible = WindowFlags_Visible;
+				else { BUILDER_FAIL("Gui::Builder::LoadLayout failed, unexpected '{0}' when a '0' or '1' was required", c); }
+				// Increment index here to skip next ':'
+				index++;
+				STATE(3);
+			}
+
+			if (state == 3)
+			{
+				// :split]
+				if (c == ':')
+				{
+					if (dir.length() < 1) { BUILDER_FAIL("Gui::Builder::LoadLayout failed, unexpected ':' with 0 length dir"); }
+					STATE(4);
+				}
+				// _:split]
+				else dir += c;
+			}
+
+			if (state == 4)
+			{
+				// ] ...
+				if (c == ']')
+				{
+					if (split.length() < 1) { BUILDER_FAIL("Gui::Builder::LoadLayout failed, unexpected ']' with 0 length split"); }
+					
+					// Add GuiWindow to map
+					map[name] = Window(name.c_str(), visible, WindowType::ANY, WindowLayout{ std::stoi(dir), std::stof(split) });
+					name = "";
+					dir = "";
+					split = "";
+					STATE(0);
+				}
+				// _]
+				else split += c;
+			}
+
+		}
+        #undef BUILDER_FAIL
+        #undef STATE
+
+		// Stop if we failed parsing
+		if (state == -1) return false;
+		if (state != 0)
+		{
+			SURF_CORE_ERROR("Builder::LoadLayout failed, bad syntax");
+			return false;
+		}
+
+		// Overwrite styles for windows
+		for (Window* window : windows)
+		{
+			if (map.find(window->name) == map.end())
+			{
+				SURF_CORE_ERROR("Builder::LoadLayout failed, window named \"{0}\" defined in loaded layout was not found, did you forget to add it to the builder?", window->name);
+				return false;
+			}
+
+			Window other = map[window->name];
+			window->layout = other.layout;
+			window->visible = other.visible;
+		}
+
+		return true;
+	}
+
+	std::string Builder::SaveLayout()
+	{
+		// This borrows code from v1.71 ImGui::DockSettingsHandler_WriteAll(ImGuiContext* ctx, ImGuiSettingsHandler* handler, ImGuiTextBuffer* buf)
+		ImGuiContext& g = *GetCurrentContext();
+		ImGuiDockContext* dc = g.DockContext;
+		std::vector<WindowData>* wd = {};
+
+		if (!(g.IO.ConfigFlags & ImGuiConfigFlags_DockingEnable))
+		{
+			SURF_CORE_WARN("Invalid call to Gui::Builder::SaveLayout(), ImGuiIO does not have the config flag ImGuiConfigFlags_DockingEnable!");
+			return "";
+		}
+
+		// We aren't going to overwrite the SettingsNodes here, just to keep things simple.
+		for (int n = 0; n < dc->Nodes.Data.Size; n++)
+			if (ImGuiDockNode* node = (ImGuiDockNode*)dc->Nodes.Data[n].val_p)
+				if (node->IsRootNode())
+					CollectNodes(wd, node, 0);
+
+		std::string output = "";
+
+		// [name:1:dir:split]
+		for (WindowData wind : *wd)
+		{
+			output += "[";
+			output += wind.name;
+			output += ":";
+			output += wind.visible ? "1" : "0";
+			output += ":";
+			output += wind.layout.Direction;
+			output += ":";
+			char ratio[6];
+			sprintf_s(ratio, 6, "%.4f", wind.layout.SplitRatio);
+			output += ratio;
+			output += "]";
+		}
+		
+		return output;
+	}
+
+	void Builder::CollectNodes(std::vector<WindowData>* wd, ImGuiDockNode* node, int depth)
+	{
+		ImVec2 view_size = GetMainViewport()->Size;
+
+		// Practically copy+paste from DockSettingsHandler_DockNodeToSettings(ImGuiDockContext* dc, ImGuiDockNode* node, int depth)
+		IM_ASSERT(depth < 256);
+
+		// Extract window data
+
+		for (ImGuiWindow* window : node->Windows)
+		{
+			WindowData data;
+			data.name = window->Name;
+			WindowLayout layout = ((WindowData*)(&window->WindowClass))->layout; // If this ever breaks, just make a virtual destructor on ImGuiWindowClass!!!
+			if (layout.Direction != ImGuiDir_None)
+				data.layout = layout;
+			else
+			{
+				SURF_CORE_WARN("Window named \"{0}\" was not properly created using the Gui::Window base class, did you remember to call ImGui::SetNextWindowClass(&imGuiClass) inside Gui::Window::GuiBegin()?");
+				data.layout = { ImGuiDir_None, 0.f };
+			}
+			data.visible = node->IsVisible;
+			wd->push_back(data);
+		}
+
+		if (node->ChildNodes[0])
+			CollectNodes(wd, node->ChildNodes[0], depth + 1);
+		if (node->ChildNodes[1])
+			CollectNodes(wd, node->ChildNodes[1], depth + 1);
+	}
+
+	std::vector<std::pair<std::string, std::string>> Builder::GetAllLayouts()
+	{
+		std::vector<std::pair<std::string, std::string>> layouts;
+		std::string name;
+
+		for (auto& item : std::filesystem::directory_iterator("layout"))
+		{
+			if (item.is_regular_file())
+			{
+				name = item.path().string();
+				layouts.push_back({ name, LoadLayoutFile(name) });
+			}
+		}
+
+		return layouts;
+	}
+
+	std::string Builder::LoadLayoutFile(const std::string& name)
+	{
+		size_t last = name.rfind('/');
+		if (last == std::string::npos)
+			last = name.rfind('\\');
+
+		std::string real_name = name;
+		if (last != std::string::npos)
+		{
+			if (last + 1 >= name.size())
+			{
+				SURF_CORE_ERROR("Failed to load layout file \"{0}\" because the file name was empty", name);
+				return "";
+			}
+			else
+			{
+				real_name = name.substr(last + 1);
+				SURF_CORE_WARN("Layout files can only be loaded from the `layout/` directory, file \"{0}\" renamed to \"{1}\"", name, real_name);
+			}
+		}
+
+		last = real_name.rfind(".ini");
+		if (last == std::string::npos)
+		{
+			real_name += ".ini";
+			SURF_CORE_WARN("Layout files must have the `.ini` extension, file \"{0}\" renamed to \"{1}\"", name, real_name);
+		}
+
+		// load from layout directory
+		real_name = "layout/" + real_name;
+		return ReadFile(real_name.c_str());
+	}
+
+	bool Builder::SaveLayoutFile(const std::string& layout, const std::string& name)
+	{
+		size_t last = name.rfind('/');
+		if (last == std::string::npos)
+			last = name.rfind('\\');
+
+		std::string real_name = name;
+		if (last != std::string::npos)
+		{
+			if (last + 1 >= name.size())
+			{
+				SURF_CORE_ERROR("Failed to save layout file \"{0}\" because the file name was empty", name);
+				return false;
+			}
+			else
+			{
+				real_name = name.substr(last + 1);
+				SURF_CORE_WARN("Layout files can only be saved to the `layout/` directory, file \"{0}\" renamed to \"{1}\"", name, real_name);
+			}
+		}
+
+		last = real_name.rfind(".ini");
+		if (last == std::string::npos)
+		{
+			real_name += ".ini";
+			SURF_CORE_WARN("Layout files must have the `.ini` extension, file \"{0}\" renamed to \"{1}\"", name, real_name);
+		}
+
+		// Add to layout directory
+		real_name = "layout/" + real_name;
+		if (std::filesystem::exists(real_name))
+			SURF_CORE_WARN("Layout file \"{0}\" overwritten", real_name);
+		return WriteFile(real_name.c_str(), layout.c_str());
+	}*/
+}
+}

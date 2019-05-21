@@ -3,8 +3,11 @@
 #include "Surface/Application.h"
 #include "Surface/View.h"
 #include "GLRenderer.h"
+#include "Gui.h"
 
 namespace Surface {
+
+	class DemoWindow;
 
 	class SURF_API ImGuiOverlay : public Overlay
 	{
@@ -21,6 +24,7 @@ namespace Surface {
 		virtual void OnEvent(Event& event) override final;
 
 	private:
+		static DemoWindow demoWindow;
 		static bool initialized;
 		static GLFWcursor* cursors[ImGuiMouseCursor_COUNT];
 		static bool mouseJustPressed[5];

@@ -66,6 +66,9 @@
     <ClInclude Include="src\Surface\GUI\GLRenderer.h">
       <Filter>src\Surface\GUI</Filter>
     </ClInclude>
+    <ClInclude Include="src\Surface\GUI\Gui.h">
+      <Filter>src\Surface\GUI</Filter>
+    </ClInclude>
     <ClInclude Include="src\Surface\GUI\ImGuiOverlay.h">
       <Filter>src\Surface\GUI</Filter>
     </ClInclude>
@@ -1188,6 +1191,9 @@
       <Filter>src\Surface</Filter>
     </ClCompile>
     <ClCompile Include="src\Surface\GUI\GLRenderer.cpp">
+      <Filter>src\Surface\GUI</Filter>
+    </ClCompile>
+    <ClCompile Include="src\Surface\GUI\Gui.cpp">
       <Filter>src\Surface\GUI</Filter>
     </ClCompile>
     <ClCompile Include="src\Surface\GUI\ImGuiOverlay.cpp">

@@ -1,0 +1,220 @@
+#include "spch.h"
+
+#include "Gui.h"
+
+namespace Surface {
+namespace Gui {
+
+	ImGuiID Window::unique_class = -1;
+
+	bool Builder::BeginLayout(ImGuiID windowID, bool force)
+	{
+		// Check that current windowID is 0
+		if (this->windowID != 0)
+		{
+			SURF_CORE_WARN("Unexpected call to Builder::BeginLayout() before calling Builder::FinishLayout()! Please make sure you have finished the previous layout before starting a new one.");
+			return false;
+		}
+
+		// Only set layout if not already set or if `force` is true
+		if (!force && DockBuilderGetNode(windowID) != NULL)
+			return false;
+		else
+			DockBuilderRemoveNode(windowID);
+
+		DockBuilderAddNode(windowID, ImGuiDockNodeFlags_DockSpace | ImGuiDockNodeFlags_CentralNode);
+
+		main_dock = windowID;
+		this->windowID = windowID;
+
+		// Used by all other functions to know if docking is happening
+		building = true;
+		return true;
+	}
+
+	void Builder::FinishLayout()
+	{
+		building = false;
+		DockBuilderFinish(windowID);
+		windowID = 0;
+		main_dock = 0;
+		dock_id = 0;
+		groups.clear();
+	}
+
+	ImGuiID Builder::Add(Window* window, WindowFlags flags)
+	{
+		// Check we have docking enabled, and warn just incase the programmer is using this stuff wrong
+		if (!building || windowID == 0)
+		{
+			SURF_CORE_WARN("Gui::Builder::Add failed! Make sure you only call docking functions if BeginLayout() returns true!");
+			return 0;
+		}
+
+		// Check window isn't already docked
+		for (auto[dockID, group] : groups)
+		{
+			for (Window* other : group.second)
+			{
+				if (other->name == window->name)
+				{
+					SURF_CORE_WARN("Gui::Builder::Add failed, window with name \"{0}\" already docked!", window->name);
+					return dockID;
+				}
+			}
+		}
+
+		if (flags != WindowFlags_Unchanged)
+		{
+			window->flags = flags;
+			window->imGuiClass.DockingAllowUnclassed = !(bool)(flags & WindowFlags_NoDockingUnclassed);
+		}
+
+		// Split if defined, otherwise add to current active dock_id
+		ImGuiID thisDockSpecificallyAndIDontMeanTheCurrentDockID;
+		if (window->layout.Direction != ImGuiDir_None)
+			dock_id = thisDockSpecificallyAndIDontMeanTheCurrentDockID = DockBuilderSplitNode(main_dock, window->layout.Direction, window->layout.SplitRatio, NULL, &main_dock);
+		else
+			thisDockSpecificallyAndIDontMeanTheCurrentDockID = dock_id;
+
+		ApplyDock(window, thisDockSpecificallyAndIDontMeanTheCurrentDockID);
+		return thisDockSpecificallyAndIDontMeanTheCurrentDockID;
+	}
+
+	ImGuiID Builder::AddOther(Window* window, WindowFlags flags, ImGuiDir direction, float ratio, WindowType type, bool forceType)
+	{
+		if (ratio == 0.f) ratio = window->layout.SplitRatio;
+		window->layout = { direction, ratio };
+		if (type != WindowType::ANY || forceType)
+		{
+			window->type = type;
+			window->imGuiClass.ClassId = (ImGuiID)type;
+		}
+		
+		return Add(window, flags);
+	}
+
+	ImGuiID Builder::Split(ImGuiID* dock_location, Window* window, WindowFlags flags)
+	{
+		// Remember, we return the ID for where we just docked, and update dock_location with the ID of the new, empty node!
+		// This is currently identical to Add for the most part, except we change the dock id names around
+
+		// Check we have docking enabled, and warn just incase the programmer is using this stuff wrong
+		if (!building || windowID == 0)
+		{
+			SURF_CORE_WARN("Gui::Builder::Split failed! Make sure you only call docking functions if BeginLayout() returns true!");
+			return *dock_location;
+		}
+
+		// Check window isn't already docked
+		for (auto[dockID, group] : groups)
+		{
+			for (Window* other : group.second)
+			{
+				if (other->name == window->name)
+				{
+					SURF_CORE_WARN("Gui::Builder::Split failed, window with name \"{0}\" already docked!", window->name);
+					return dockID;
+				}
+			}
+		}
+
+		if (flags != WindowFlags_Unchanged)
+		{
+			window->flags = flags;
+			window->imGuiClass.DockingAllowUnclassed = !(bool)(flags & WindowFlags_NoDockingUnclassed);
+		}
+
+		// Warn if split isn't defined, but otherwise act just like a normal Add() dock
+		ImGuiID thisDockSpecificallyAndIDontMeanTheCurrentDockID;
+		if (window->layout.Direction != ImGuiDir_None)
+			thisDockSpecificallyAndIDontMeanTheCurrentDockID = DockBuilderSplitNode(*dock_location, window->layout.Direction, window->layout.SplitRatio, NULL, dock_location);
+		else
+		{
+			SURF_CORE_WARN("\
+Gui::Builder::Split called without window->layout being initialized properly! Window was docked\n\
+into `dock_location` without splitting, but this behavior is otherwise undefined, so please use\n\
+Add() right after creating the spot where you want it instead!");
+			thisDockSpecificallyAndIDontMeanTheCurrentDockID = *dock_location;
+		}
+
+		ApplyDock(window, thisDockSpecificallyAndIDontMeanTheCurrentDockID);
+		return thisDockSpecificallyAndIDontMeanTheCurrentDockID;
+
+	}
+
+	ImGuiID Builder::SplitOther(ImGuiID* dock_location, Window* window, WindowFlags flags, ImGuiDir direction, float ratio, WindowType type, bool forceType)
+	{
+		// This is currently identical to AddOther for the most part
+		if (ratio == 0.f) ratio = window->layout.SplitRatio;
+		window->layout = { direction, ratio };
+		if (type != WindowType::ANY || forceType)
+		{
+			window->type = type;
+			window->imGuiClass.ClassId = (ImGuiID)type;
+		}
+
+		// Unlike AddOther, we call Split()
+		return Split(dock_location, window, flags);
+	}
+
+	void Builder::ApplyDock(Window* window, ImGuiID dockID)
+	{
+		// Add window to node and groups
+		DockBuilderDockWindow(window->name, dockID);
+
+		ImGuiDockNode* node = DockBuilderGetNode(dockID);
+
+		// Update group flags as needed
+		if (groups.find(dockID) != groups.end())
+		{
+			auto[group_flags, window_group] = groups[dockID];
+
+			if ((bool)(window->flags & WindowFlags_AutoHideTab) && !(bool)(group_flags & WindowFlags_AutoHideTab))
+			{
+				// Don't warn about this, should be acceptable
+				node->LocalFlags |= ImGuiDockNodeFlags_AutoHideTabBar;
+				group_flags |= WindowFlags_AutoHideTab;
+			}
+
+			if ((bool)(window->flags & (WindowFlags_DisableClose | WindowFlags_DisableCloseForce)) && !(bool)(group_flags & (WindowFlags_DisableClose | WindowFlags_DisableCloseForce)))
+			{
+				// Log warnings, this might be unintentional!
+				SURF_CORE_WARN("\
+Window \"{0}\" added to group with Gui::Builder has inconsistent use of the flag\n\
+`WindowFlags_DisableClose`, this option will take precedence over other windows in the group.\n\
+Please consider using consistent flags on windows, or use `WindowFlags_DisableCloseForce`\n\
+to supress this warning.", window->name);
+				node->HasCloseButton = false;
+
+				// Prevent further warnings
+				group_flags |= WindowFlags_DisableCloseForce;
+			}
+
+			if ((bool)(window->flags & (WindowFlags_DisableTab | WindowFlags_DisableTabForce)) && !(bool)(group_flags & (WindowFlags_DisableTab | WindowFlags_DisableTabForce)))
+			{
+				// Log warnings, this might be unintentional!
+				SURF_CORE_WARN("\
+Window \"{0}\" added to group with Gui::Builder has inconsistent use of the flag\n\
+`WindowFlags_DisableTab`, this option will take precedence over other windows in the group.\n\
+Please consider using consistent flags on windows, or use `WindowFlags_DisableTabForce`\n\
+to supress this warning.", window->name);
+				node->LocalFlags |= ImGuiDockNodeFlags_NoTabBar;
+
+				// Prevent further warnings
+				group_flags |= WindowFlags_DisableTabForce;
+			}
+
+			// Update window group
+			window_group.push_back(window);
+			groups[dockID] = { group_flags, window_group };
+		}
+		else
+		{
+			// Add window to new docking group
+			groups[dockID] = { window->flags, {window} };
+		}
+	}
+
+}
+}

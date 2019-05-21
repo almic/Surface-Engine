@@ -12462,13 +12462,8 @@ static void ImGui::DockNodeUpdateTabBar(ImGuiDockNode* node, ImGuiWindow* host_w
 
     // Close button (after VisibleWindow was updated)
     // Note that VisibleWindow may have been overrided by CTRL+Tabbing, so VisibleWindow->ID may be != from tab_bar->SelectedTabId
-    if (node->VisibleWindow)
+    if (node->VisibleWindow && node->VisibleWindow->HasCloseButton)
     {
-        if (!node->VisibleWindow->HasCloseButton)
-        {
-            PushItemFlag(ImGuiItemFlags_Disabled, true);
-            PushStyleColor(ImGuiCol_Text, style.Colors[ImGuiCol_Text] * ImVec4(1.0f,1.0f,1.0f,0.5f));
-        }
         const float rad = g.FontSize * 0.5f;
         if (CloseButton(host_window->GetID("#CLOSE"), title_bar_rect.GetTR() + ImVec2(-style.FramePadding.x - rad, style.FramePadding.y + rad), rad + 1))
             if (ImGuiTabItem* tab = TabBarFindTabByID(tab_bar, tab_bar->VisibleTabId))
@@ -12476,13 +12471,6 @@ static void ImGui::DockNodeUpdateTabBar(ImGuiDockNode* node, ImGuiWindow* host_w
                 node->WantCloseTabID = tab->ID;
                 TabBarCloseTab(tab_bar, tab);
             }
-        //if (IsItemActive())
-        //    focus_tab_id = tab_bar->SelectedTabId;
-        if (!node->VisibleWindow->HasCloseButton)
-        {
-            PopStyleColor();
-            PopItemFlag();
-        }
     }
 
     // When clicking on the title bar outside of tabs, we still focus the selected tab for that node
@@ -12883,8 +12871,8 @@ void ImGui::DockNodeTreeSplit(ImGuiContext* ctx, ImGuiDockNode* parent_node, ImG
     size_avail = ImMax(size_avail, g.Style.WindowMinSize[split_axis] * 2.0f);
     IM_ASSERT(size_avail > 0.0f); // If you created a node manually with DockBuilderAddNode(), you need to also call DockBuilderSetNodeSize() before splitting.
     child_0->SizeRef = child_1->SizeRef = parent_node->Size;
-    child_0->SizeRef[split_axis] = ImFloor(size_avail * split_ratio);
-    child_1->SizeRef[split_axis] = ImFloor(size_avail - child_0->SizeRef[split_axis]);
+    child_0->SizeRef[split_axis] = /*ImFloor(*/size_avail * split_ratio/*)*/;
+    child_1->SizeRef[split_axis] = /*ImFloor(*/size_avail - child_0->SizeRef[split_axis]/*)*/;
 
     DockNodeMoveWindows(parent_node->ChildNodes[split_inheritor_child_idx], parent_node);
     DockNodeTreeUpdatePosSize(parent_node, parent_node->Pos, parent_node->Size);
@@ -12985,7 +12973,7 @@ void ImGui::DockNodeTreeUpdatePosSize(ImGuiDockNode* node, ImVec2 pos, ImVec2 si
         }
 
         // 3) If one window is the central node (~ use remaining space, should be made explicit!), use explicit size from the other, and remainder for the central node
-        else if (child_1->IsCentralNode() && child_0->SizeRef[axis] != 0.0f)
+        /*else if (child_1->IsCentralNode() && child_0->SizeRef[axis] != 0.0f)
         {
             child_0_size[axis] = ImMin(size_avail - size_min_each, child_0->SizeRef[axis]);
             child_1_size[axis] = (size_avail - child_0_size[axis]);
@@ -12994,7 +12982,7 @@ void ImGui::DockNodeTreeUpdatePosSize(ImGuiDockNode* node, ImVec2 pos, ImVec2 si
         {
             child_1_size[axis] = ImMin(size_avail - size_min_each, child_1->SizeRef[axis]);
             child_0_size[axis] = (size_avail - child_1_size[axis]);
-        }
+        }*/
         else
         {
             // 4) Otherwise distribute according to the relative ratio of each SizeRef value
