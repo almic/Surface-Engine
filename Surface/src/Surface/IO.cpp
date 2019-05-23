@@ -13,12 +13,16 @@ namespace Surface {
 			return "";
 		}
 
-		std::string result, line;
-		while (std::getline(f, line)) result += line;
-
-		if (!f.good())
+		if (f.bad())
 		{
 			SURF_CORE_WARN("There was a problem while reading the file \"{0}\", incomplete result may have been returned: exception {1}", file, f.exceptions());
+		}
+
+		std::string result, line;
+		while (std::getline(f, line))
+		{
+			result += line;
+			result += '\n';
 		}
 
 		f.close();

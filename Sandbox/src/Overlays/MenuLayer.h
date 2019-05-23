@@ -126,7 +126,7 @@ public:
 		{
 			ImVec2 view_size = GetCurrentWindow()->Size;
 			// Default layout parameters
-			float ratio_right = .2f;
+			float ratio_right = .17f;
 			float ratio_left = (ratio_right * view_size.x) / ((1.f - ratio_right) * (view_size.x));
 			float ratio_level_view = (1.f - (ratio_right * 2)) * (view_size.x) * (9.f / 16.f) / (view_size.y);
 

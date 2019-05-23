@@ -20,7 +20,7 @@ namespace Surface {
 	{
 		properties = props;
 
-		SURF_CORE_INFO("Creating window \"{0}\" ({1}, {2})", properties.title, properties.width, properties.height);
+		SURF_CORE_INFO("Creating OpenGL window \"{0}\" ({1}, {2})", properties.title, properties.width, properties.height);
 
 		if (!GLFWInitialized)
 		{
@@ -31,14 +31,22 @@ namespace Surface {
 
 		glfwSetErrorCallback(GLFWErrorCallback);
 
+		glfwWindowHint(GLFW_CLIENT_API, GLFW_OPENGL_API);
+		glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GLFW_TRUE);
+		glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
+		glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 6);
+
 		if (properties.form == WindowForm::FULLSCREEN)
 			window = glfwCreateWindow(properties.width, properties.height, properties.title.c_str(), glfwGetPrimaryMonitor(), nullptr);
 		else
 			window = glfwCreateWindow(properties.width, properties.height, properties.title.c_str(), nullptr, nullptr);
+		
+		SURF_CORE_INFO("Using OpenGL version {0}.{1}", glfwGetWindowAttrib(window, GLFW_CONTEXT_VERSION_MAJOR), glfwGetWindowAttrib(window, GLFW_CONTEXT_VERSION_MINOR));
 
 		glfwMakeContextCurrent(window);
 		glfwSetWindowUserPointer(window, &properties);
 		glfwSwapInterval(properties.vsync);
+
 
 		if (properties.form == WindowForm::HIDDEN)
 			glfwHideWindow(window);
