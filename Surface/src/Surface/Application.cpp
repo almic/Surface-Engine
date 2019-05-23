@@ -8,12 +8,14 @@ namespace Surface {
 #define BIND_APP_FN(x) std::bind(&Application::x, this, std::placeholders::_1)
 
 	Application* Application::app = nullptr;
+	Render::Domain* Application::renderDomain = nullptr;
 
 	Application::Application(const WindowProperties& properties)
 	{
 		window = std::unique_ptr<Window>(Window::Create(properties));
 		window->SetEventCallback(BIND_APP_FN(SendEvent));
 		app = this;
+		renderDomain = new Render::Domain();
 	}
 
 	Application::~Application()
@@ -23,6 +25,8 @@ namespace Surface {
 	void Application::Run()
 	{
 		static bool hasWarnedNoViews = false;
+
+		renderDomain->LoadShader();
 
 		while (running)
 		{
@@ -50,7 +54,9 @@ namespace Surface {
 				for (auto it = view->overlays.end(); it != view->overlays.begin();)
 					(*--it)->Update();
 			}
-			
+
+			renderDomain->DrawTriangle();
+
 			window->OnUpdate();
 
 			EndTick(); // Always do this last

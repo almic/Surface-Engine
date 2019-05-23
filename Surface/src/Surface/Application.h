@@ -4,6 +4,7 @@
 #include "Window.h"
 #include "Event.h"
 #include "Event/Handler.h"
+#include "Render/Render.h"
 #include <chrono>
 #include <glad/glad.h>
 
@@ -19,6 +20,7 @@ namespace Surface {
 	{
 	private:
 		static Application* app;
+		static Render::Domain* renderDomain;
 	public:
 		Application(const WindowProperties& properties = WindowProperties());
 		virtual ~Application();
@@ -34,6 +36,7 @@ namespace Surface {
 		unsigned int views_count = 0;
 
 		inline static Application* GetApp() { return app; }
+		inline static Render::Domain* GetRenderDomain() { return renderDomain; }
 
 		virtual void OnEvent(Event& event) {}
 		virtual void OnTick(const double &deltaTime) {}

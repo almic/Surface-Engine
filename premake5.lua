@@ -42,6 +42,7 @@ project "Surface"
 
 	includedirs
 	{
+		"%{prj.name}/assets",
 		"%{prj.name}/src",
 		"%{IncludeDir.Glad}",
 		"%{IncludeDir.GLFW}",
