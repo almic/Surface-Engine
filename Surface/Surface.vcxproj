@@ -1,5 +1,5 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
-<Project DefaultTargets="Build" ToolsVersion="15.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+<Project DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup Label="ProjectConfigurations">
     <ProjectConfiguration Include="Debug|x64">
       <Configuration>Debug</Configuration>
@@ -19,26 +19,26 @@
     <IgnoreWarnCompileDuplicatedFilename>true</IgnoreWarnCompileDuplicatedFilename>
     <Keyword>Win32Proj</Keyword>
     <RootNamespace>Surface</RootNamespace>
-    <WindowsTargetPlatformVersion>10.0.17763.0</WindowsTargetPlatformVersion>
+    <WindowsTargetPlatformVersion>10.0</WindowsTargetPlatformVersion>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">
     <ConfigurationType>StaticLibrary</ConfigurationType>
     <UseDebugLibraries>true</UseDebugLibraries>
     <CharacterSet>Unicode</CharacterSet>
-    <PlatformToolset>v141</PlatformToolset>
+    <PlatformToolset>v142</PlatformToolset>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
     <ConfigurationType>StaticLibrary</ConfigurationType>
     <UseDebugLibraries>false</UseDebugLibraries>
     <CharacterSet>Unicode</CharacterSet>
-    <PlatformToolset>v141</PlatformToolset>
+    <PlatformToolset>v142</PlatformToolset>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Dist|x64'" Label="Configuration">
     <ConfigurationType>StaticLibrary</ConfigurationType>
     <UseDebugLibraries>false</UseDebugLibraries>
     <CharacterSet>Unicode</CharacterSet>
-    <PlatformToolset>v141</PlatformToolset>
+    <PlatformToolset>v142</PlatformToolset>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
   <ImportGroup Label="ExtensionSettings">
@@ -162,7 +162,11 @@
     <ClInclude Include="src\Surface\IO.h" />
     <ClInclude Include="src\Surface\Input.h" />
     <ClInclude Include="src\Surface\Log.h" />
+    <ClInclude Include="src\Surface\Render\OpenGL.h" />
     <ClInclude Include="src\Surface\Render\Render.h" />
+    <ClInclude Include="src\Surface\Thread\Pool.h" />
+    <ClInclude Include="src\Surface\Thread\Sync.h" />
+    <ClInclude Include="src\Surface\Thread\Worker.h" />
     <ClInclude Include="src\Surface\View.h" />
     <ClInclude Include="src\Surface\Window.h" />
     <ClInclude Include="src\Surface\Window\GLWindow.h" />
@@ -541,7 +545,11 @@
     <ClCompile Include="src\Surface\Input.cpp" />
     <ClCompile Include="src\Surface\Input\GLInput.cpp" />
     <ClCompile Include="src\Surface\Log.cpp" />
+    <ClCompile Include="src\Surface\Render\OpenGL.cpp" />
     <ClCompile Include="src\Surface\Render\Render.cpp" />
+    <ClCompile Include="src\Surface\Thread\Pool.cpp" />
+    <ClCompile Include="src\Surface\Thread\Sync.cpp" />
+    <ClCompile Include="src\Surface\Thread\Worker.cpp" />
     <ClCompile Include="src\Surface\Window\GLWindow.cpp" />
     <ClCompile Include="src\spch.cpp">
       <PrecompiledHeader>Create</PrecompiledHeader>
@@ -557,10 +565,6 @@
     <ProjectReference Include="vendor\imgui\imgui.vcxproj">
       <Project>{0098A80F-6CAC-D0C0-352E-7420A101CDF1}</Project>
     </ProjectReference>
-  </ItemGroup>
-  <ItemGroup>
-    <None Include="assets\shaders\basic.frag" />
-    <None Include="assets\shaders\basic.vert" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
