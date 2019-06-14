@@ -19,6 +19,9 @@
     <Filter Include="src\Surface\Render">
       <UniqueIdentifier>{547A8F88-405E-50DE-A9BE-4A3195C13A60}</UniqueIdentifier>
     </Filter>
+    <Filter Include="src\Surface\Thread">
+      <UniqueIdentifier>{4C4A728D-382E-33E3-A18E-2D368D911D65}</UniqueIdentifier>
+    </Filter>
     <Filter Include="src\Surface\Window">
       <UniqueIdentifier>{CCA88194-B88C-42EA-21ED-3C3D0DF02C6C}</UniqueIdentifier>
     </Filter>
@@ -86,6 +89,15 @@
     </ClInclude>
     <ClInclude Include="src\Surface\Render\Render.h">
       <Filter>src\Surface\Render</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Surface\Thread\Pool.h">
+      <Filter>src\Surface\Thread</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Surface\Thread\Sync.h">
+      <Filter>src\Surface\Thread</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Surface\Thread\Worker.h">
+      <Filter>src\Surface\Thread</Filter>
     </ClInclude>
     <ClInclude Include="src\Surface\View.h">
       <Filter>src\Surface</Filter>
@@ -1220,15 +1232,20 @@
     <ClCompile Include="src\Surface\Render\Render.cpp">
       <Filter>src\Surface\Render</Filter>
     </ClCompile>
+    <ClCompile Include="src\Surface\Thread\Pool.cpp">
+      <Filter>src\Surface\Thread</Filter>
+    </ClCompile>
+    <ClCompile Include="src\Surface\Thread\Sync.cpp">
+      <Filter>src\Surface\Thread</Filter>
+    </ClCompile>
+    <ClCompile Include="src\Surface\Thread\Worker.cpp">
+      <Filter>src\Surface\Thread</Filter>
+    </ClCompile>
     <ClCompile Include="src\Surface\Window\GLWindow.cpp">
       <Filter>src\Surface\Window</Filter>
     </ClCompile>
     <ClCompile Include="src\spch.cpp">
       <Filter>src</Filter>
     </ClCompile>
-  </ItemGroup>
-  <ItemGroup>
-    <None Include="assets\shaders\basic.vert" />
-    <None Include="assets\shaders\basic.frag" />
   </ItemGroup>
 </Project>
