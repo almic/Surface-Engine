@@ -1,0 +1,11 @@
+# Build results
+bin
+
+# IDE Files
+.vs
+.vscode
+*.sln
+*.vcxproj*
+
+# Hidden for the moment so I don't have to worry about keeping these out of commits
+Documents
