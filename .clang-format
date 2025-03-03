@@ -30,9 +30,12 @@ BraceWrapping:
     SplitEmptyRecord: true
     SplitEmptyNamespace: true
 
+DerivePointerAlignment: false
 IncludeBlocks: Regroup
 InsertNewlineAtEOF: true
 MaxEmptyLinesToKeep: 2
 NamespaceIndentation: None
+PointerAlignment: Left
 ReflowComments: true
 SeparateDefinitionBlocks: Always
+SpaceAfterCStyleCast: true
