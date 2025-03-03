@@ -1,6 +1,6 @@
 project "Sandbox"
     -- Basic options
-    kind "ConsoleApp"
+    kind "WindowedApp"
     language "C++"
     cppdialect "C++20"
     staticruntime "off"
@@ -33,6 +33,7 @@ project "Sandbox"
 
     filter "system:windows"
         systemversion "latest"
+        entrypoint "mainCRTStartup"
 
         defines
         {
