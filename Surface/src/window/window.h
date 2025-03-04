@@ -70,20 +70,31 @@ struct WindowHandle;
 
 class Window
 {
+  private:
+    // The console window of the application
+    inline static Window* console_window;
 
   public:
     // Retrieve a created window from its handle
     static Window* get_window(WindowHandle& handle);
 
+    /**
+     * @brief Retrieve a console window for the application. If a console window does not exist, one
+     * will be created and the applications stdio will be directed to it.
+     * @return console window
+     */
+    static Window* get_console_window();
+
     // Create a window
     static Window* create(const char* name, const WindowOptions& options);
 
-    // Internal only, do not use
-    Window(const char* name, const char* title, WindowHandle* handle)
-        : name(name), title(title), handle(handle) {};
     ~Window();
 
   private:
+    // Internal
+    Window(const char* name, const char* title, WindowHandle* handle)
+        : name(name), title(title), handle(handle) {};
+
     // Window width
     unsigned int width = 0;
     // Window height
@@ -102,7 +113,6 @@ class Window
 
     // Window handle pointer, for platform implementations
     WindowHandle* handle;
-
 
   public:
     // If the application has been quit via this window and should terminate
