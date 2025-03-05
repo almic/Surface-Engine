@@ -1,31 +1,44 @@
 #include "app/app.h"
+#include "console/console.h"
 #include "window/window.h"
-
-#include <iostream>
 
 class SandboxApp : public Surface::App
 {
     Surface::Window* main_window = nullptr;
-    Surface::Window* console = nullptr;
+    Surface::Console* console = nullptr;
 
     void setup() override
     {
         main_window = Surface::Window::create("main", {.title = "Hello World"});
 
-        console = Surface::Window::get_console_window();
+        console = Surface::Console::create("Sanbox Console", false);
 
-        std::cout << "Testing linked console." << std::endl;
-        std::cout << "Did it work?" << std::endl;
+        console->writeln("Setting up the application");
     }
 
     void update() override
     {
-        // std::cout << "Calling SandboxApp update()" << std::endl;
+        // Send buffered text
+        if (console->is_buffered())
+        {
+            console->flush();
+        }
+
+        if (tick_count() == 1000000)
+        {
+            console->writeln("1 million ticks!");
+        }
 
         main_window->update();
 
         if (main_window->closed || main_window->quitting)
         {
+            console->writeln("Main window closed, stopping.");
+            if (console->is_open())
+            {
+                console->writeln("Closing console connection.");
+                console->end();
+            }
             delete console;
             stop(true);
         }
@@ -34,12 +47,9 @@ class SandboxApp : public Surface::App
 
 int main()
 {
-    // std::cout << "Test" << std::endl;
-
     SandboxApp app;
 
     int result = app.run();
 
-    // std::cout << "Stopped on tick " << app.tick_count() << std::endl;
     return result;
 }
