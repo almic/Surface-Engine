@@ -43,8 +43,8 @@ bool write_platform_console(Console& console, char* text);
 namespace Surface
 {
 
-const int BUFFER_SIZE = 1024;
-const int PIPE_BUFFER_SIZE = 128;
+const size_t BUFFER_SIZE = 1024;
+const size_t PIPE_BUFFER_SIZE = 128;
 
 struct ConsoleHandle
 {
@@ -62,7 +62,7 @@ struct ConsoleHandle
 
     // buffered output while waiting for connections
     char buff[BUFFER_SIZE] = {0};
-    int size = 0;
+    size_t size = 0;
 
     /**
      * @brief Helper to buffer text
@@ -77,7 +77,7 @@ struct ConsoleHandle
             return false;
         }
 
-        int str_size = strnlen(text, BUFFER_SIZE);
+        size_t str_size = strnlen(text, BUFFER_SIZE + 1); // Overflowing texts get ignored
 
         // Don't buffer empty strings
         if (str_size == 0)
@@ -90,7 +90,7 @@ struct ConsoleHandle
             return false; // not enough space to buffer
         }
 
-        strncpy(buff + size, text, str_size);
+        strncpy_s(buff + size, str_size, text, str_size);
         size += str_size;
         return true;
     }
@@ -101,17 +101,17 @@ struct ConsoleHandle
      * @param count characters to pull
      * @return
      */
-    void unshift(char* out, int count)
+    void unshift(char* out, size_t count)
     {
         // Min between count and size
-        int real_count = size < count ? size : count;
+        size_t real_count = size < count ? size : count;
 
         // write out bytes
-        strncpy(out, buff, real_count);
+        strncpy_s(out, count, buff, real_count);
         if (count > real_count)
         {
             // write zero up to count
-            memset(out + real_count, 0, static_cast<size_t>(count) - real_count);
+            memset(out + real_count, 0, count - real_count);
         }
 
         // reduce size
@@ -119,11 +119,11 @@ struct ConsoleHandle
 
         // copy the end of our buffer temporarily to null terminated string
         char* temp = new char[size + 1];
-        strncpy(temp, buff + real_count, size);
-        temp[size] = '\0';
+        strncpy_s(temp, size + 1, buff + real_count, size);
+        strncpy_s(buff, BUFFER_SIZE, temp, size + 1);
 
-        // strncpy will clear the buffer with zeros after hitting the null in temp, nice!
-        strncpy(buff, temp, BUFFER_SIZE);
+        // memset 0 the remainder of the buffer
+        memset(buff + size, 0, BUFFER_SIZE - size);
 
         delete[] temp;
     }
@@ -133,7 +133,7 @@ struct ConsoleHandle
      * @param text text to shift in
      * @param count how much from text to shift in
      */
-    void shift(const char* text, int count)
+    void shift(const char* text, size_t count)
     {
         // just use count as a soft-max
         if (count > BUFFER_SIZE)
@@ -151,7 +151,7 @@ struct ConsoleHandle
         if (count == BUFFER_SIZE)
         {
             // simply overwrite the entire buffer
-            strncpy(buff, text, BUFFER_SIZE);
+            strncpy_s(buff, BUFFER_SIZE, text, BUFFER_SIZE);
             return;
         }
 
@@ -160,10 +160,10 @@ struct ConsoleHandle
         memcpy(temp, buff, BUFFER_SIZE);
 
         // write text to front of buffer
-        strncpy(buff, text, count);
+        strncpy_s(buff, BUFFER_SIZE, text, count);
 
         // write temp to buffer
-        memcpy(buff + count, temp, BUFFER_SIZE - static_cast<size_t>(count));
+        memcpy(buff + count, temp, BUFFER_SIZE - count);
 
         // update buffer size
         if (size + count > BUFFER_SIZE)
@@ -549,7 +549,7 @@ bool write_platform_console(Console& console, const char* text)
     while (1)
     {
         int status;
-        int count = 0;
+        size_t count = 0;
         DWORD written = 0;
         if (handle->size > 0)
         {
@@ -563,7 +563,9 @@ bool write_platform_console(Console& console, const char* text)
             count = strnlen(buff, PIPE_BUFFER_SIZE);
 
             // Send `count` bytes contained in `buff`
+#pragma warning(disable : 4267) // Count will never be larger than PIPE_BUFFER_SIZE
             status = WriteFile(*handle->out, buff, count, &written, handle->overlap);
+#pragma warning(default : 4267)
             from_text = false;
         }
         else
@@ -575,7 +577,7 @@ bool write_platform_console(Console& console, const char* text)
             }
             text_processed = true;
 
-            count = strlen(text);
+            count = strnlen(text, (size_t) -1);
 
             // If we have too much, buffer it instead and let the above handle it
             if (count > PIPE_BUFFER_SIZE)
@@ -585,7 +587,9 @@ bool write_platform_console(Console& console, const char* text)
             }
 
             // Send from text directly
+#pragma warning(disable : 4267) // Count will never be larger than PIPE_BUFFER_SIZE
             status = WriteFile(*handle->out, text, count, &written, handle->overlap);
+#pragma warning(default : 4267)
             from_text = true;
         }
 
