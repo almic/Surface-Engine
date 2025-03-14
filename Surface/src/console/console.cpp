@@ -623,6 +623,14 @@ bool write_platform_console(Console& console, const char* text)
                 handle->write_pending = true;
                 break;
             }
+            else if (status == ERROR_NO_DATA)
+            {
+                // Pipe is being closed, disconnect
+                handle->closed = true;
+                handle->disconnect();
+                delete[] buff;
+                return false;
+            }
         }
 
 #ifdef DEBUG
