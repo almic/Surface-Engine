@@ -90,13 +90,14 @@ struct ConsoleHandle
             return false; // not enough space to buffer
         }
 
-        strncpy_s(buff + size, str_size, text, str_size);
+        // just memcpy, we don't want null characters
+        memcpy(buff + size, text, str_size);
         size += str_size;
         return true;
     }
 
     /**
-     * @brief Helper to pull buffered text out, does not append null character
+     * @brief Helper to pull buffered text out, add null characters if size < count
      *
      * @param count characters to pull
      * @return
@@ -107,7 +108,7 @@ struct ConsoleHandle
         size_t real_count = size < count ? size : count;
 
         // write out bytes
-        strncpy_s(out, count, buff, real_count);
+        memcpy(out, buff, real_count);
         if (count > real_count)
         {
             // write zero up to count
@@ -117,15 +118,14 @@ struct ConsoleHandle
         // reduce size
         size -= real_count;
 
-        // copy the end of our buffer temporarily to null terminated string
-        char* temp = new char[size + 1];
-        strncpy_s(temp, size + 1, buff + real_count, size);
-        strncpy_s(buff, BUFFER_SIZE, temp, size + 1);
+        // copy the end of our buffer to the front
+        for (size_t i = 0, k = real_count; i < size; ++i, ++k)
+        {
+            buff[i] = buff[k];
+        }
 
         // memset 0 the remainder of the buffer
         memset(buff + size, 0, BUFFER_SIZE - size);
-
-        delete[] temp;
     }
 
     /**
@@ -247,13 +247,11 @@ struct ConsoleHandle
 
 ConsoleHandle::~ConsoleHandle()
 {
-    disconnect();
+    disconnect(); // this deletes `out`
     delete pi;
-    delete out;
     delete overlap;
 
     pi = nullptr;
-    out = nullptr;
     overlap = nullptr;
 };
 
