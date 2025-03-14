@@ -1,6 +1,7 @@
 #include "json.h"
 
 #include "array.h"
+#include "internal/assert.h"
 #include "object.h"
 #include "value.h"
 
@@ -33,14 +34,446 @@ int Object::__copies = 0;
 int Object::__moves = 0;
 #endif
 
+Value _parse(const char* json, bool strict) noexcept;
+
 Value parse(const char* json) noexcept
 {
-    return NULL;
+    return _parse(json, false);
 }
 
 Value strict_parse(const char* json)
 {
-    return NULL;
+    return _parse(json, true);
+}
+
+// Helper for building strings, can stack strings with push()/ pop()
+struct StringBuilder
+{
+    StringBuilder(size_t capacity);
+    ~StringBuilder();
+
+    // Adds the character to the end of the string
+    void append(const char c);
+
+    // Adds text to the end of the string
+    void append(const char* text);
+
+    // Adds string of uint to the end of the string
+    void append(size_t uint);
+
+    // Returns the current string buffer after inserting a null character, valid for the lifetime of
+    // the Reader, invalidated if new characters are appended.
+    char* get_string();
+
+    // Resets the internal length to 0 such that future calls to append() and get_string() start
+    // over from the beginning. Does not modify the buffer contents.
+    void clear();
+
+    // Appends a null, sets the starting point of the next get_string() to the new length
+    void push();
+
+    // Moves the internal start point and length back to where they were before the last call to
+    // push()
+    void pop();
+
+  private:
+    inline void resize(size_t new_size);
+
+    char* buffer = nullptr;
+    size_t start = 0;
+    size_t length = 0;
+    size_t capacity = 0;
+};
+
+// Helper to generate internal parse exceptions
+static Exception _parse_exception_internal(StringBuilder& buffer, size_t code, size_t line,
+                                           size_t column)
+{
+    buffer.push();
+    buffer.append("Parsing exception occurred on line ");
+    buffer.append(line);
+    buffer.append(", column ");
+    buffer.append(column);
+    buffer.append(". Error #");
+    buffer.append(code);
+    buffer.append('.');
+
+    return Exception(buffer.get_string(), line, column);
+}
+
+static Exception _parse_error_complete(StringBuilder& buffer, size_t line, size_t column)
+{
+    buffer.append(" on line ");
+    buffer.append(line);
+    buffer.append(", column ");
+    buffer.append(column);
+    buffer.append('.');
+
+    return Exception(buffer.get_string(), line, column);
+}
+
+Value _parse(const char* json, bool strict) noexcept
+{
+    size_t length = strnlen(json, STR_LEN);
+
+    // No
+    if (length == STR_LEN)
+    {
+        return NULL;
+    }
+
+    static enum State
+    {
+        // Expecting a value
+        VALUE,
+
+        // Both VALUE and END
+        VALUE_OR_END,
+
+        // Reading a string in double quotes
+        STRING,
+
+        // Reading the first part of a number, expecting digits, decimal, or exponent.
+        // Have either read a negative sign ('-'), or a digit.
+        NUMBER,
+
+        // Reading the fractional part of a number, expecting digits or exponent.
+        NUMBER_FRACTION,
+
+        // Reading the exponent, expecting a sign or digits.
+        NUMBER_EXP_SIGN,
+
+        // Reading the digits of an exponent
+        NUMBER_EXPONENT,
+
+        // Reading escape sequence within a string
+        ESCAPE,
+
+        // Expecting a colon ':'
+        COLON,
+
+        // Expecting ']' or '}' or ',' to appear.
+        END_OR_COMMA,
+
+        // Expecting end of input
+        TERMINATE
+    };
+
+    // State machine time
+    State state = VALUE;
+
+    // Using my own array as a stack type :)
+    Value value_stack = Value::array(16);
+    auto& stack = value_stack.to_array();
+
+    // I want few allocations while processing, so start with a lot
+    StringBuilder buffer(1024);
+    size_t index = 0;
+    size_t max = length;
+
+    // may not be used but tracked anyway
+    size_t pos = 0;
+    size_t line = 1;
+
+    while (max)
+    {
+        --max;
+
+        char next = json[index];
+        ++index;
+        ++pos;
+
+        if (next == '\n' && state != STRING)
+        {
+            pos = 0;
+            ++line;
+            continue;
+        }
+
+        switch (state)
+        {
+        case ESCAPE:
+        {
+            switch (next)
+            {
+                // These are the only valid escapes for JSON strings
+            case '"':
+            case '\\':
+            case '/':
+            {
+                buffer.append(next);
+                break;
+            }
+            case 'b':
+            {
+                buffer.append('\b');
+                break;
+            }
+            case 'f':
+            {
+                buffer.append('\f');
+                break;
+            }
+            case 'n':
+            {
+                buffer.append('\n');
+                break;
+            }
+            case 'r':
+            {
+                buffer.append('\r');
+                break;
+            }
+            case 't':
+            {
+                buffer.append('\t');
+                break;
+            }
+            case 'u':
+            {
+                // Read 4 hex digits
+                if (!(index + 3 < length))
+                {
+                    // Ran out of input while reading unicode escape
+                    if (!strict)
+                    {
+                        return NULL;
+                    }
+                    buffer.push();
+                    buffer.append("Unexpected end of input while reading unicode escape");
+                    throw _parse_error_complete(buffer, line, pos);
+                }
+
+                unsigned int val = 0;
+                for (char i = 0; i < 4; ++i)
+                {
+                    val *= 16;
+
+                    next = json[index];
+                    ++index;
+                    ++pos;
+                    if (next >= '0' && next <= '9')
+                    {
+                        val += next - '0';
+                    }
+                    else if (next >= 'a' && next <= 'f')
+                    {
+                        val += 10 + (next - 'a');
+                    }
+                    else if (next >= 'A' && next <= 'F')
+                    {
+                        val += 10 + (next - 'A');
+                    }
+                    else
+                    {
+                        // Invalid hex digit in unicode escape
+                        if (!strict)
+                        {
+                            return NULL;
+                        }
+                        buffer.push();
+                        buffer.append("Invalid ");
+                        if (next >= 32 && next < 127)
+                        {
+                            buffer.append("hex digit '");
+                            buffer.append(next);
+                            buffer.append('\'');
+                        }
+                        else if (next >= 0)
+                        {
+                            buffer.append("codepoint ");
+                            buffer.append((size_t) next);
+                        }
+                        else
+                        {
+                            buffer.append("character");
+                        }
+
+                        buffer.append(" while reading unicode escape");
+                        throw _parse_error_complete(buffer, line, pos);
+                    }
+                }
+
+                if (val == 0)
+                {
+                    // Encode a null character with two bytes
+                    // This is generally how nulls should be encoded into utf8 codepoints
+                    buffer.append((char) 0xC0);
+                    buffer.append((char) 0x80);
+                }
+                else if (val < 0x80)
+                {
+                    // ascii encoding
+                    buffer.append((char) val);
+                }
+                else if (val < 0x800)
+                {
+                    // two bytes
+                    char a = 0xC0 | (val >> 6);
+                    char b = 0x80 | (val & 0x3F);
+                    buffer.append(a);
+                    buffer.append(b);
+                }
+                else
+                {
+                    // three bytes
+                    char a = 0xE0 | (val >> 12);
+                    char b = 0x80 | ((val >> 6) & 0x3F);
+                    char c = 0x80 | (val & 0x3F);
+                    buffer.append(a);
+                    buffer.append(b);
+                    buffer.append(c);
+                }
+                break;
+            }
+            default:
+            {
+                if (!strict)
+                {
+                    return NULL;
+                }
+
+                // Invalid escaped character
+                buffer.push();
+                buffer.append("Invalid escape sequence ");
+                if (next >= 32 && next < 127)
+                {
+                    buffer.append("\"\\");
+                    buffer.append(next);
+                    buffer.append('"');
+                }
+                else if (next == 0)
+                {
+                    buffer.append("\"\\0\"");
+                }
+                throw _parse_error_complete(buffer, line, pos);
+            }
+            }
+
+            state = STRING;
+            break;
+        }
+        case STRING:
+        {
+            switch (next)
+            {
+            case '"':
+            {
+                char* string = buffer.get_string();
+                buffer.pop();
+
+                // Single string value
+                if (stack.is_empty())
+                {
+                    stack.push(Value(string));
+                    state = TERMINATE;
+                    break;
+                }
+
+                auto top = stack.last();
+
+                if (top->is_object())
+                {
+                    // save key to be used later once the value is parsed
+                    stack.push(Value(string));
+                    state = COLON;
+                    break;
+                }
+
+                if (top->is_array())
+                {
+                    top->to_array().push(Value(string));
+                    state = END_OR_COMMA;
+                    break;
+                }
+
+                if (top->is_string())
+                {
+                    auto key = stack.pop().to_string();
+                    // Expect to get an object
+
+                    if (stack.is_empty())
+                    {
+                        assert(("You messed up, read a string value with a string value on the "
+                                "stack, expected object but stack was empty",
+                                false));
+
+                        if (!strict)
+                        {
+                            return NULL;
+                        }
+
+                        throw _parse_exception_internal(buffer, 0x11, line, pos);
+                    }
+
+                    auto value_obj = stack.last();
+                    if (!value_obj->is_object())
+                    {
+                        assert(("You messed up, read a string value and popped a string key, but "
+                                "top value is not an object",
+                                false));
+
+                        if (!strict)
+                        {
+
+                            return NULL;
+                        }
+
+                        throw _parse_exception_internal(buffer, 0x12, line, pos);
+                    }
+
+                    value_obj->to_object().set(key, Value(string));
+                    state = END_OR_COMMA;
+                    break;
+                }
+
+                assert(("You messed up, read a string value but top of stack is neither "
+                        "object, array, nor string",
+                        false));
+
+                if (!strict)
+                {
+                    return NULL;
+                }
+
+                throw _parse_exception_internal(buffer, 0x1F, line, pos);
+            }
+            case '\\':
+            {
+                state = ESCAPE;
+                break;
+            }
+            default:
+            {
+                if (next == 0x7F || (next >= 0 && next < 0x20))
+                {
+                    // Control characters are not allowed to appear in strings
+                    if (!strict)
+                    {
+                        return NULL;
+                    }
+
+                    buffer.push();
+                    buffer.append("Invalid string, control characters are not valid in JSON "
+                                  "strings. Found control character ");
+                    buffer.append((size_t) next);
+                    throw _parse_error_complete(buffer, line, pos);
+                }
+
+                if (next >= 0x20 && next < 0x7F)
+                {
+                    buffer.append(next);
+                    break;
+                }
+
+                // TODO: parse UTF-8 codepoints...
+                assert(("UTF-8 not implemented. Do it now!!", false));
+                return NULL;
+            }
+            }
+        }
+        }
+    }
 }
 
 // Helper for writing to string buffer, and being conservative about memory use. This is meant to be
@@ -847,6 +1280,181 @@ void Writer::resize(size_t new_size)
 
     delete[] old_buffer;
     size = new_size;
+}
+
+Exception::Exception(const char* message, size_t line, size_t column) : _line(line), _column(column)
+{
+    size_t length = strnlen(message, STR_LEN);
+    this->message = new char[length + 1];
+    strncpy_s(this->message, length + 1, message, length);
+}
+
+Exception::~Exception()
+{
+    delete[] message;
+    message = nullptr;
+}
+
+size_t Exception::line() const noexcept
+{
+    return _line;
+}
+
+size_t Exception::column() const noexcept
+{
+    return _column;
+}
+
+const char* Exception::what() const noexcept
+{
+    return message;
+}
+
+StringBuilder::StringBuilder(size_t capacity)
+{
+    resize(capacity);
+}
+
+StringBuilder::~StringBuilder()
+{
+    delete[] buffer;
+}
+
+void StringBuilder::append(const char c)
+{
+    resize(length + 1);
+    buffer[length] = c;
+    ++length;
+}
+
+void StringBuilder::append(const char* text)
+{
+    size_t text_length = strnlen(text, STR_LEN);
+    if (text_length == 0)
+    {
+        return;
+    }
+
+    resize(length + text_length);
+    memcpy(buffer + length, text, text_length);
+    length += text_length;
+}
+
+void StringBuilder::append(size_t uint)
+{
+    // Simple but eh... feels primitive
+    // Reserve 20 characters to work with
+    static size_t max = 20;
+    size_t pos = max;
+    resize(length + pos);
+
+    do
+    {
+        --pos;
+        // is there not a way to divide and get the result and the remainder together?
+        // maybe this is optimized to something I don't know about?
+        char c = '0' + (uint % 10);
+        buffer[length + pos] = c;
+        uint /= 10;
+
+        if (pos == 0)
+        {
+            break;
+        }
+    }
+    while (uint > 0);
+
+    size_t offset = pos;
+    if (offset == 0)
+    {
+        length += max;
+        return;
+    }
+
+    do
+    {
+        buffer[length] = buffer[length + offset];
+        ++length;
+        ++pos;
+    }
+    while (pos < max);
+}
+
+char* StringBuilder::get_string()
+{
+    resize(length + 1);
+    buffer[length] = 0;
+    return buffer + start;
+}
+
+void StringBuilder::clear()
+{
+    length = 0;
+}
+
+void StringBuilder::push()
+{
+    append('\0');
+    start = length;
+}
+
+void StringBuilder::pop()
+{
+    if (start == 0)
+    {
+        return;
+    }
+
+    length = start - 1;
+
+    // move start back to beginning or after first null
+    do
+    {
+        --start;
+    }
+    while (start > 0 && buffer[start - 1] != 0);
+}
+
+inline void StringBuilder::resize(size_t new_size)
+{
+    if (!(capacity < new_size))
+    {
+        return;
+    }
+
+    char* old = buffer;
+    size_t old_cap = capacity;
+    capacity = capacity * 2;
+    if (capacity < new_size)
+    {
+        capacity = new_size;
+    }
+
+    if (capacity == 0)
+    {
+        buffer = nullptr;
+        if (old != nullptr)
+        {
+            delete[] old;
+        }
+        return;
+    }
+
+    buffer = new char[capacity];
+    if (old != nullptr)
+    {
+        memcpy(buffer, old, old_cap);
+#ifdef DEBUG
+        memset(buffer + old_cap, 0, capacity - old_cap);
+#endif
+        delete[] old;
+    }
+#ifdef DEBUG
+    else
+    {
+        memset(buffer, 0, capacity);
+    }
+#endif
 }
 
 } // namespace Surface::JSON

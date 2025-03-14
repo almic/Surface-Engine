@@ -138,6 +138,17 @@ size_t Array::push(Value&& value)
     return insert(std::move(value), size);
 }
 
+Value Array::pop()
+{
+    if (size == 0)
+    {
+        return Value(Type::Invalid, 0);
+    }
+
+    --size;
+    return Value(std::move(values[size]));
+}
+
 bool Array::remove(const Value& value)
 {
     if (size == 0)

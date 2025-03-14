@@ -42,9 +42,26 @@ namespace Surface::JSON
 extern const Value& NULL;
 
 /**
+ * @brief Exception thrown by `parse_strict()`, similar to std::exception but does not extend it.
+ */
+struct Exception
+{
+    Exception(const char* message, size_t line, size_t column);
+    ~Exception();
+
+    size_t line() const noexcept;
+    size_t column() const noexcept;
+    const char* what() const noexcept;
+
+  private:
+    size_t _line;
+    size_t _column;
+    char* message;
+};
+
+/**
  * @brief Parse a string into a JSON::Value. If parsing fails for any reason, JSON::NULL is returned
- * instead of throwing an exception. This makes parsing a little bit faster, especially if you don't
- * intend to display parsing errors to users.
+ * instead of throwing an exception.
  *
  * To get detailed parsing errors, use JSON::strict_parse().
  *
@@ -55,9 +72,8 @@ Value parse(const char* json) noexcept;
 
 /**
  * @brief Parse a string into a JSON::Value. If parsing fails, an exception is thrown describing the
- * exact reason, including line and character values. Because this method must keep track of more
- * information to produce an exception, it is not recommended unless you intend to display the error
- * to a user.
+ * exact reason, including line and character values. Because this method must build an exception
+ * object when it fails, it is not recommended unless you intend to display the error to a user.
  *
  * @param json json text to parse with exceptions
  * @return a JSON::Value

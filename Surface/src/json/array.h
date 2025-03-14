@@ -201,6 +201,27 @@ struct Array
         return size;
     }
 
+    // Check if the array is currently empty
+    inline bool is_empty() const
+    {
+        return size == 0;
+    }
+
+    // Returns the last element of the array, nullptr if empty
+    inline Value* last()
+    {
+        if (size == 0)
+        {
+            return nullptr;
+        }
+        return values + (size - 1);
+    }
+
+    inline const Value* last() const
+    {
+        return const_cast<const Value*>(last());
+    }
+
     // Inserts an element at a specified index, throws if index > size(), returns the new size
     size_t insert(const Value& value, size_t index);
     size_t insert(Value&& value, size_t index);
@@ -233,6 +254,9 @@ struct Array
     {
         return push(Value(std::move(value)));
     }
+
+    // Removes the last element and returns it, invalid if the array is empty.
+    Value pop();
 
     /**
      * @brief Removes the first element in the array equal to value, returns true if a value was
