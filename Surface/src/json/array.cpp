@@ -1,377 +1,263 @@
-#include "array.h"
+#include "json.h"
 
-#include "internal/assert.h"
-
-#include <utility> // std::move()
+#include <cstdlib>
+#include <utility>
 
 namespace Surface::JSON
 {
-Array::Array(size_t capacity)
+
+void Array::copy_other(const Array& other)
 {
-#ifdef DEBUG
-    ++__constructs;
-#endif
+    resize(other.m_capacity);
+    m_size = other.m_size;
 
-    this->capacity = capacity;
-    update_capacity();
-}
-
-Array::Array(const Array& other) // Copy
-{
-#ifdef DEBUG
-    ++__constructs;
-#endif
-
-    copy_from(other);
-}
-
-Array::Array(Array&& other) noexcept // Move
-{
-#ifdef DEBUG
-    ++__constructs;
-#endif
-
-    move_from(std::move(other));
-}
-
-Array::~Array()
-{
-    delete_data();
-}
-
-Value& Array::operator[](size_t index)
-{
-    assert(("Index must be less than size", index < size));
-
-    return values[index];
-}
-
-const Value& Array::operator[](size_t index) const
-{
-    assert(("Index must be less than size", index < size));
-
-    return values[index];
-}
-
-Array& Array::operator=(const Array& other) // Copy
-{
-    // Guard against self assignment
-    if (this == &other)
-    {
-        return *this;
-    }
-
-    delete_data();
-
-    copy_from(other);
-
-    return *this;
-}
-
-Array& Array::operator=(Array&& other) noexcept // Move
-{
-    // Guard against self assignment
-    if (this == &other)
-    {
-        return *this;
-    }
-
-    delete_data();
-
-    move_from(std::move(other));
-
-    return *this;
-}
-
-size_t Array::clear()
-{
-    size_t old_size = size;
-    size = 0;
-
-    for (size_t index = 0; index < old_size; ++index)
-    {
-        values[index].delete_data();
-    }
-
-    return old_size;
-}
-
-size_t Array::find(const Value& value) const
-{
-    for (size_t i = 0; i < size; ++i)
-    {
-        if (values[i] == value)
-        {
-            return i;
-        }
-    }
-    return -1;
-}
-
-size_t Array::insert(const Value& value, size_t index)
-{
-
-    assert(("Insertion index must be less than or equal to size", index <= size));
-
-    _pre_insert(index);
-
-    // Copy into position
-    values[index] = value;
-
-    return size;
-}
-
-size_t Array::insert(Value&& value, size_t index)
-{
-    assert(("Insertion index must be less than or equal to size", index <= size));
-
-    _pre_insert(index);
-
-    // Move into position
-    values[index] = std::move(value);
-
-    return size;
-}
-
-size_t Array::push(Value&& value)
-{
-    return insert(std::move(value), size);
-}
-
-Value Array::pop()
-{
-    if (size == 0)
-    {
-        return Value(Type::Invalid, 0);
-    }
-
-    --size;
-    return Value(std::move(values[size]));
-}
-
-bool Array::remove(const Value& value)
-{
-    if (size == 0)
-    {
-        return false;
-    }
-
-    size_t index = 0;
-    for (; index < size; ++index)
-    {
-        if (values[index] == value)
-        {
-            break;
-        }
-    }
-
-    if (index == size)
-    {
-        return false;
-    }
-
-    // Delete data
-    values[index].delete_data();
-
-    --size;
-
-    for (; index < size; ++index)
-    {
-        values[index] = std::move(values[index + 1]);
-    }
-
-    return true;
-}
-
-size_t Array::remove_all(const Value& value)
-{
-    if (size == 0)
-    {
-        return 0;
-    }
-
-    size_t removed = 0, index = 0;
-
-    // Use removed and index together to track two pointers, the next free space and the current
-    // value being checked. This lets us perform only 1 move per remaining element, and only if a
-    // move was needed to fill a hole left by a removed element.
-    do
-    {
-        Value& val = values[index + removed];
-        if (val == value)
-        {
-            // Delete data
-            val.delete_data();
-
-            ++removed;
-            continue;
-        }
-
-        if (removed)
-        {
-            values[index] = std::move(val);
-        }
-
-        ++index;
-    }
-    while (index + removed < size);
-
-    size -= removed;
-    return removed;
-}
-
-bool Array::set_capacity(size_t new_capacity)
-{
-    if (capacity == new_capacity)
-    {
-        return false;
-    }
-
-    capacity = new_capacity;
-    update_capacity();
-
-    return true;
-}
-
-void Array::_pre_insert(size_t index)
-{
-    size_t new_size = size + 1;
-    if (new_size > capacity)
-    {
-        resize(new_size);
-    }
-    else
-    {
-        size = new_size;
-    }
-
-    // Shortcircuit when there's no need to shift indexes
-    if (index == size - 1)
+    if (!other.m_entries)
     {
         return;
     }
 
-    // Shift elements up, size is guaranteed to be at least 2.
-    for (size_t i = size - 2; i >= index; --i)
+    for (int index = 0; index < m_size; ++index)
     {
-        // TODO: This kinda sucks, is there a better way?
-        values[i + 1] = std::move(values[i]);
+        m_entries[index] = other.m_entries[index];
+    }
+}
 
-        // umm... is my computer okay? i did not think of the underflow.
-        if (i == 0)
+void Array::move_other(Array&& other) noexcept
+{
+    m_capacity = other.m_capacity;
+    m_entries = other.m_entries;
+    m_size = other.m_size;
+
+    other.m_capacity = 0;
+    other.m_entries = nullptr;
+    other.m_size = 0;
+}
+
+Array::Array(size_t capacity)
+{
+    m_size = 0;
+    resize(capacity);
+}
+
+Array::~Array()
+{
+    clear(); // destruct all elements, sets size to zero
+    m_capacity = 0;
+
+    // Free entries block
+    std::free(m_entries);
+    m_entries = nullptr;
+}
+
+Array::Array(const Array& other)
+{
+    copy_other(other);
+}
+
+Array::Array(Array&& other) noexcept
+{
+    move_other(std::move(other));
+}
+
+Value& Array::operator[](size_t index)
+{
+    return get(index);
+}
+
+const Value& Array::operator[](size_t index) const
+{
+    return get(index);
+}
+
+Array& Array::operator=(const Array& other)
+{
+    if (this == &other)
+    {
+        return;
+    }
+
+    clear();
+    copy_other(other);
+
+    return *this;
+}
+
+Array& Array::operator=(Array&& other)
+{
+    if (this == &other)
+    {
+        return;
+    }
+
+    clear();
+    move_other(std::move(other));
+
+    return *this;
+}
+
+size_t Array::append(Value&& value)
+{
+    return insert(std::move(value), m_size);
+}
+
+void Array::clear()
+{
+    if (m_size == 0)
+    {
+        return;
+    }
+
+    for (size_t index = 0; index < m_size; ++index)
+    {
+        m_entries[index].~Value();
+    }
+
+    m_size = 0;
+}
+
+Value& Array::get(size_t index)
+{
+    if (!(index < m_size))
+    {
+        // TODO: assert debug break
+        Value fake;
+        return fake;
+    }
+
+    return m_entries[index];
+}
+
+const Value& Array::get(size_t index) const
+{
+    if (!(index < m_size))
+    {
+        // TODO: assert debug break
+        Value fake;
+        return fake;
+    }
+
+    return m_entries[index];
+}
+
+size_t Array::insert(Value&& value, size_t index)
+{
+    if (index > m_size || index < 0)
+    {
+        // TODO: assert debug break
+        return m_size;
+    }
+
+    size_t new_size = m_size + 1;
+    if (new_size > m_capacity)
+    {
+        // Double capacity
+        m_capacity = m_capacity * 2;
+        if (m_capacity < new_size)
         {
-            break;
+            m_capacity = new_size;
         }
+
+        resize(m_capacity);
     }
 
-    return;
+    // Move tailing elements back
+    if (m_size - 1 >= index)
+    {
+        // clang-format off
+        std::memmove(
+            m_entries + index + 1, 
+            m_entries + index, 
+            (m_size - index) * sizeof(Value)
+        );
+        // clang-format on
+    }
+
+    // insert at index
+    new (m_entries + index) Value(std::move(value));
+
+    m_size = new_size;
+
+    return m_size;
 }
 
-void Array::resize(size_t new_size)
+size_t Array::push(Value&& value)
 {
-    size_t old_cap = capacity;
-
-    // Double capacity
-    capacity = capacity * 2;
-
-    // Fit to new size if still too small
-    if (capacity < new_size)
-    {
-        capacity = new_size;
-    }
-
-    if (capacity > old_cap)
-    {
-        update_capacity();
-    }
-
-    // Update after capacity is updated
-    size = new_size;
+    return insert(std::move(value), 0);
 }
 
-void Array::update_capacity()
+Value Array::pop()
 {
-    Value* old = values;
-
-    if (capacity < 1)
-    {
-        values = nullptr; // Be empty
-    }
-    else
-    {
-        values = new Value[capacity]; // TODO: should do this without constructing values
-    }
-
-    // Clamp size to capacity
-    if (size > capacity)
-    {
-        size = capacity;
-    }
-
-    if (old == nullptr)
-    {
-        return; // nothing to move
-    }
-
-    // Move values from old
-    if (values != nullptr)
-    {
-        for (size_t i = 0; i < size; ++i)
-        {
-            values[i] = std::move(old[i]);
-        }
-    }
-
-    delete[] old;
+    return remove(m_size - 1);
 }
 
-void Array::copy_from(const Array& other)
+Value Array::pull()
 {
-#ifdef DEBUG
-    ++__copies;
-#endif
-
-    // Reserve only the size
-    capacity = other.size;
-    size = other.size;
-
-    if (size == 0)
-    {
-        return; // Done
-    }
-
-    update_capacity();
-
-    // copy values
-    for (size_t i = 0; i < size; ++i)
-    {
-        values[i] = Value(other.values[i]); // copy and move
-    }
+    return remove(0);
 }
 
-void Array::move_from(Array&& other)
+Value Array::remove(size_t index)
 {
-#ifdef DEBUG
-    ++__moves;
-#endif
+    if (index >= m_size)
+    {
+        // TODO: assert debug break
+        Value fake;
+        return fake;
+    }
 
-    // Retain capacity since we are moving
-    capacity = std::exchange(other.capacity, 0);
-    size = std::exchange(other.size, 0);
+    Value result = std::move(m_entries[index]);
 
-    // Simply exchange the pointer
-    values = std::exchange(other.values, nullptr);
+    // Move all following elements back
+    if (index + 1 < m_size)
+    {
+        // clang-format off
+        std::memmove(
+            m_entries + index, 
+            m_entries + index + 1,
+            (m_size - (index + 1)) * sizeof(Value)
+        );
+        // clang-format on
+    }
+
+    --m_size;
+
+    return result;
 }
 
-void Array::delete_data()
+void Array::resize(size_t capacity)
 {
-    delete[] values;
+    if (capacity <= m_capacity)
+    {
+        return;
+    }
 
-    // clean up
-    values = nullptr;
+    m_entries = (Value*) std::realloc(m_entries, sizeof(Value) * capacity);
+    m_capacity = capacity;
+}
 
-    capacity = 0;
-    size = 0;
+Value Array::set(Value&& value, size_t index)
+{
+    if (index >= m_size)
+    {
+        // TODO: assert debug break
+        Value fake;
+        return fake;
+    }
+
+    Value result = std::move(m_entries[index]);
+    m_entries[index] = std::move(value);
+
+    return result;
+}
+
+void Array::trim()
+{
+    if (m_size == 0 || !(m_capacity > m_size))
+    {
+        return;
+    }
+
+    m_entries = (Value*) std::realloc(m_entries, sizeof(Value) * m_size);
+    m_capacity = m_size;
 }
 
 } // namespace Surface::JSON

@@ -1,99 +1,323 @@
 #pragma once
 
-#include "array.h"
-#include "object.h"
-#include "value.h"
-
-// This macro is STUPID and I did NOT ask for it
-#pragma push_macro("NULL")
-#undef NULL
-
-/*
-
-I want to, in the future, add a binary representation of this JSON. However, this implementation
-must keep parity with what JSON allows.
-
-So, this implementation must support a few things:
-
-1. Reading a string into the json data type.
-2. Writing a string from a json data type.
-3. Modifying the json data type.
-
-To stay minimal, the following will be explicitly unimplemented:
-
-1. NO file reading or writing, only string encoding/ decoding
-2. NO generic dynamic type, it just handles the values that json defines
-3. NO type coersion. If we have a string, it must be retrieved as a string
-4. NO integer type selection. We only store longs and doubles
-5. NO advanced arrays. Just inserting, erasing, and iteration.
-6. NO advanced dynamic maps. Just inserting, erasing, and iteration.
-7. NO crazy operator overloading, just get and set and maybe a bracket operator for easier use.
-
-*/
+#include <stdint.h> // uint64_t
 
 namespace Surface::JSON
 {
 
-/**
- * @brief The JSON `null` value.
- *
- * If you have the NULL macro: blame Windows, #undef NULL, type `0` instead, blame Windows again.
- */
-extern const Value& NULL;
+struct Value;
+struct Array;
+struct Object;
+struct ParseResult;
+struct StringResult;
 
-/**
- * @brief Exception thrown by `parse_strict()`, similar to std::exception but does not extend it.
- */
-struct Exception
+// Parse a json string to a json value, contained within ParseResult, which evaluates to boolean
+// `false` and contains an exception message if the parse fails.
+ParseResult parse(const char* json);
+
+// Convert a json value to a string, result is wrapped for automatic resource cleanup
+StringResult to_string(const Value& value);
+
+struct Value
 {
-    Exception(const char* message, size_t line, size_t column);
-    ~Exception();
+    enum Type : unsigned char
+    {
+        Null,
+        Array,
+        Object,
+        String,
+        Boolean,
+        Number
+    };
 
-    size_t line() const noexcept;
-    size_t column() const noexcept;
-    const char* what() const noexcept;
+  public: // Contructors
+    Value() : type(Null), value(0) {};
+    Value(const Value& other);
+    Value(Value&& other);
+    ~Value();
+
+    Value(const char* string);
+
+    Value(bool boolean) : value(boolean ? -1 : 0), type(Boolean) {};
+
+    Value(double number) : value(*((uint64_t*) &number)), type(Number) {};
+    Value(long double number) : Value((double) number) {};
+    Value(int number) : Value((double) number) {};
+    Value(long int number) : Value((double) number) {};
+    Value(long long int number) : Value((double) number) {};
+    Value(unsigned int number) : Value((double) number) {};
+    Value(unsigned long int number) : Value((double) number) {};
+    Value(unsigned long long int number) : Value((double) number) {};
+
+    static Value array(size_t capacity = 0);
+
+    static Value object(size_t capacity = 0);
+
+  public: // Operators
+    Value& operator=(const Value& other);
+    Value& operator=(Value&& other) noexcept;
+
+    template <typename Type> Value& operator=(const Type& other)
+    {
+        *this = Value(other);
+        return *this;
+    }
+
+    operator bool() const; // for quick null/ bool/ positive value checks
+
+  public: // Methods
+    // Clears the data of this value and makes it Null.
+    void clear();
+
+    // Get the type of this value
+    Type get_type() const;
+
+    bool is_null() const;
+    bool is_array() const;
+    bool is_object() const;
+    bool is_string() const;
+    bool is_bool() const;
+    bool is_number() const;
+
+
+    JSON::Array& as_array(JSON::Array& dfault);
+    const JSON::Array& as_array(const JSON::Array& dfault) const;
+
+    JSON::Object& as_object(JSON::Object& dfault);
+    const JSON::Object& as_object(const JSON::Object& dfault) const;
+
+    const char* as_string(const char* dfault) const;
+
+    bool as_bool(bool dfault) const;
+
+    double as_number(double dfault) const;
+
+
+    JSON::Array& to_array();
+    const JSON::Array& to_array() const;
+
+    JSON::Object& to_object();
+    const JSON::Object& to_object() const;
+
+    const char* to_string() const;
+
+    bool to_bool() const;
+
+    double to_number() const;
 
   private:
-    size_t _line;
-    size_t _column;
-    char* message;
+    Value(Type type, uint64_t value) : type(type), value(value) {};
+
+    void copy_other(const Value& other);
+
+    void move_other(Value&& other);
+
+  private: // Members
+    Type type;
+    uint64_t value;
 };
 
-/**
- * @brief Parse a string into a JSON::Value. If parsing fails for any reason, JSON::NULL is returned
- * instead of throwing an exception.
- *
- * To get detailed parsing errors, use JSON::strict_parse().
- *
- * @param json json text to parse
- * @return a JSON::Value
- */
-Value parse(const char* json) noexcept;
+struct Array
+{
+    Array(const Array& other);
+    Array(Array&& other) noexcept;
+    ~Array();
 
-/**
- * @brief Parse a string into a JSON::Value. If parsing fails, an exception is thrown describing the
- * exact reason, including line and character values. Because this method must build an exception
- * object when it fails, it is not recommended unless you intend to display the error to a user.
- *
- * @param json json text to parse with exceptions
- * @return a JSON::Value
- */
-Value strict_parse(const char* json);
+    Value& operator[](size_t index);
+    const Value& operator[](size_t index) const;
+    Array& operator=(const Array& other);
+    Array& operator=(Array&& other) noexcept;
 
-/**
- * @brief Encode a JSON::Value into a string, optionally with spacing and array line length. When
- * spacing is enabled, newlines will be added for each key:value pair in objects, and each value in
- * arrays. You can set `array_line_length` to a positive value to let values in arrays run on the
- * same line up to a max length. Only strings, numbers, and bools in arrays can share lines.
- *
- * @param value value to encode to a JSON string
- * @param space 0 = newline per value, N = space indentation, -1 = no whitespace
- * @param array_line_length use a positive value to let array values share lines
- * @return a string
- */
-char* to_string(const Value& value, unsigned int space = -1,
-                unsigned int array_line_length = 0) noexcept;
+    // Add a value to the end of the array, returns the new size
+    size_t append(Value&& value);
+
+    template <typename Type> size_t append(Type value)
+    {
+        return append(Value(value));
+    }
+
+    // Clears the array, retaining capacity but setting size to zero
+    void clear();
+
+    // Retrieve the value at a given index
+    Value& get(size_t index);
+    const Value& get(size_t index) const;
+
+    // Add a value at the specified position, must be <= size, returns the new size
+    size_t insert(Value&& value, size_t index);
+
+    template <typename Type> size_t insert(Type value, size_t index)
+    {
+        return insert(Value(value), index);
+    }
+
+    // Add a value to the front of the array, returns the new size
+    size_t push(Value&& value);
+
+    template <typename Type> size_t push(Type value)
+    {
+        return push(Value(value));
+    }
+
+    // Remove a value from the end of the array and return it
+    Value pop();
+
+    // Remove a value from the front of the array and return it
+    Value pull();
+
+    // Remove a value from the given index and return it
+    Value remove(size_t index);
+
+    // Resize to hold at least `capacity` elements, grows capacity
+    void resize(size_t capacity);
+
+    // Set the value at a given index and return the old value
+    Value set(Value&& value, size_t index);
+
+    size_t size() const
+    {
+        return m_size;
+    }
+
+    // Sets array capacity to current array size, freeing memory as needed
+    void trim();
+
+  private: // Members
+    Value* m_entries;
+    size_t m_size;
+    size_t m_capacity;
+
+  private: // Methods
+    Array(size_t capacity);
+    friend Value;
+
+    void copy_other(const Array& other);
+
+    void move_other(Array&& other) noexcept;
+};
+
+struct Object
+{
+    using Key = char*;
+
+    ~Object();
+
+    struct Entry
+    {
+        Key key = nullptr;
+        Value value;
+
+        Entry* next = nullptr;
+    };
+
+    Value& operator[](const Key& key);
+    const Value& operator[](const Key& key) const;
+
+    // Retrieve a value with the given key, returns nullptr if it does not exist
+    Value* get(const Key& key);
+    const Value* get(const Key& key) const;
+
+    // Retrieve a value with the given key, returns default if it does not exist
+    Value& get(const Key& key, Value& dfault);
+    const Value& get(const Key& key, const Value& dfault) const;
+
+    // Test if the map contains the given key
+    bool has(const Key& key) const;
+
+    // Put a value at the given key, replacing an existing value if it exists, returns the new map
+    // size
+    size_t put(const Key& key, const Value& value);
+    size_t put(const Key& key, Value&& value);
+
+    // Get the number of mappings
+    inline size_t size() const
+    {
+        return m_size;
+    }
+
+    // Rehash the entries with at least `buckets` number of buckets
+    void rehash(size_t buckets);
+
+    // Number of buckets that the map should have given current size
+    size_t desired_buckets() const;
+
+  public: // Hash method
+    static size_t hash(Key& key);
+
+  private: // Members
+    // Bucket map
+    Entry* m_entries;
+
+    // Number of stored elements
+    size_t m_size;
+
+    // Number of buckets in the map, must be a power of 2
+    size_t m_buckets;
+
+  private: // Constructor for Value
+    Object(size_t capacity);
+    friend Value;
+
+    void copy_other(const Object& other);
+
+    void move_other(Object&& other);
+};
+
+// Returned by parser, evaluates to boolean `false` if there is an error message
+struct ParseResult
+{
+    ParseResult(Value&& value);
+    ParseResult(const char* message, size_t line, size_t column)
+        : m_message(copy_message(message)), m_line(line), m_column(column) {};
+
+    ~ParseResult();
+
+    operator bool() const
+    {
+        return m_message == nullptr;
+    }
+
+    const char* what() const
+    {
+        return m_message ? m_message : "No exception";
+    }
+
+    Value&& get();
+
+  private:
+    Value m_value;
+    char* m_message = nullptr;
+    size_t m_line = 0, m_column = 0;
+
+  private: // Static methods
+    static char* copy_message(const char* message);
+};
+
+// Simple wrapper for a char* that deletes the string when it goes out of scope, or can release
+// control of the char* if needed.
+struct StringResult
+{
+    StringResult(char* string_to_take) : m_str(string_to_take) {};
+
+    char* string() const
+    {
+        return m_str;
+    }
+
+    char* take_ownership()
+    {
+        char* temp = m_str;
+        m_str = nullptr;
+        return temp;
+    }
+
+    ~StringResult()
+    {
+        delete[] m_str;
+    }
+
+  private:
+    char* m_str;
+};
 
 } // namespace Surface::JSON
-
-#pragma pop_macro("NULL")
