@@ -1,7 +1,8 @@
 #include "json.h"
 
-#include <cstdlib>
-#include <utility>
+#include <cstdlib> // free/ realloc
+#include <cstring> // memmove
+#include <utility> // move
 
 namespace Surface::JSON
 {

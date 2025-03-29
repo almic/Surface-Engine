@@ -200,6 +200,8 @@ struct Object
 {
     using Key = char*;
 
+    Object(const Object& other);
+    Object(Object&& other) noexcept;
     ~Object();
 
     struct Entry
@@ -212,6 +214,14 @@ struct Object
 
     Value& operator[](const Key& key);
     const Value& operator[](const Key& key) const;
+    Object& operator=(const Object& other);
+    Object& operator=(Object&& other) noexcept;
+
+
+    void clear();
+
+    // Number of buckets that the map should have given current size
+    size_t desired_buckets() const;
 
     // Retrieve a value with the given key, returns nullptr if it does not exist
     Value* get(const Key& key);
@@ -229,20 +239,17 @@ struct Object
     size_t put(const Key& key, const Value& value);
     size_t put(const Key& key, Value&& value);
 
+    // Rehash the entries with at least `buckets` number of buckets
+    void rehash(size_t buckets);
+
     // Get the number of mappings
     inline size_t size() const
     {
         return m_size;
     }
 
-    // Rehash the entries with at least `buckets` number of buckets
-    void rehash(size_t buckets);
-
-    // Number of buckets that the map should have given current size
-    size_t desired_buckets() const;
-
   public: // Hash method
-    static size_t hash(Key& key);
+    static size_t hash(const Key& key);
 
   private: // Members
     // Bucket map
