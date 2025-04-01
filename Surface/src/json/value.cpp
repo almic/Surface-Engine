@@ -10,7 +10,7 @@ static uint64_t cast_ptr(void* ptr)
     return *((uint64_t*) &ptr);
 }
 
-static char* copy_string(const char* string)
+static char* str_copy(const char* string)
 {
     size_t length = 0;
     while (length < (size_t) -2)
@@ -58,7 +58,7 @@ void Value::copy_other(const Value& other)
     case String:
     {
         type = String;
-        char* copy = copy_string(other.to_string());
+        char* copy = str_copy(other.to_string());
         value = cast_ptr(copy);
         break;
     }
@@ -107,18 +107,18 @@ Value::~Value()
 
 Value::Value(const char* string)
 {
-    char* copy = copy_string(string);
+    char* copy = str_copy(string);
     value = cast_ptr(copy);
     type = String;
 }
 
-Value Value::array(size_t capacity = 0)
+Value Value::array(size_t capacity)
 {
     JSON::Array* array = new JSON::Array(capacity);
     return Value(Array, cast_ptr(array));
 }
 
-Value Value::object(size_t capacity = 0)
+Value Value::object(size_t capacity)
 {
     JSON::Object* object = new JSON::Object(capacity);
     return Value(Object, cast_ptr(object));
@@ -128,7 +128,7 @@ Value& Value::operator=(const Value& other)
 {
     if (this == &other)
     {
-        return;
+        return *this;
     }
 
     clear();
@@ -137,11 +137,11 @@ Value& Value::operator=(const Value& other)
     return *this;
 }
 
-Value& Value::operator=(Value&& other)
+Value& Value::operator=(Value&& other) noexcept
 {
     if (this == &other)
     {
-        return;
+        return *this;
     }
 
     clear();

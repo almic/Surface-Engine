@@ -74,7 +74,7 @@ Array& Array::operator=(const Array& other)
 {
     if (this == &other)
     {
-        return;
+        return *this;
     }
 
     clear();
@@ -83,14 +83,14 @@ Array& Array::operator=(const Array& other)
     return *this;
 }
 
-Array& Array::operator=(Array&& other)
+Array& Array::operator=(Array&& other) noexcept
 {
     if (this == &other)
     {
-        return;
+        return *this;
     }
 
-    clear();
+    this->~Array();
     move_other(std::move(other));
 
     return *this;

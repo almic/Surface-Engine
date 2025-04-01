@@ -18,6 +18,18 @@ ParseResult parse(const char* json);
 // Convert a json value to a string, result is wrapped for automatic resource cleanup
 StringResult to_string(const Value& value);
 
+namespace Utility
+{
+// String max size
+inline constexpr size_t MAX_SIZE = -1;
+
+// Copy a string and return a new string
+char* str_copy(const char*& str);
+
+// Test if two strings are equal
+bool str_equal(const char*& a, const char*& b);
+} // namespace Utility
+
 struct Value
 {
     enum Type : unsigned char
@@ -136,7 +148,7 @@ struct Array
         return append(Value(value));
     }
 
-    // Clears the array, retaining capacity but setting size to zero
+    // Clears the array, retaining capacity and setting size to zero
     void clear();
 
     // Retrieve the value at a given index
@@ -210,6 +222,14 @@ struct Object
         Value value;
 
         Entry* next = nullptr;
+
+        Entry() {};
+        Entry(const Key& key);
+        Entry(const Entry& other);
+        Entry(Entry&& other);
+        ~Entry();
+
+        bool operator==(const Entry& other);
     };
 
     Value& operator[](const Key& key);
@@ -217,7 +237,7 @@ struct Object
     Object& operator=(const Object& other);
     Object& operator=(Object&& other) noexcept;
 
-
+    // Clears the map, retaining capacity and setting size to zero
     void clear();
 
     // Number of buckets that the map should have given current size
@@ -231,6 +251,9 @@ struct Object
     Value& get(const Key& key, Value& dfault);
     const Value& get(const Key& key, const Value& dfault) const;
 
+    // Retrieve a value if it exists, or insert a null value and return it
+    Value& get_or_put(const Key& key);
+
     // Test if the map contains the given key
     bool has(const Key& key) const;
 
@@ -238,9 +261,6 @@ struct Object
     // size
     size_t put(const Key& key, const Value& value);
     size_t put(const Key& key, Value&& value);
-
-    // Rehash the entries with at least `buckets` number of buckets
-    void rehash(size_t buckets);
 
     // Get the number of mappings
     inline size_t size() const
@@ -255,11 +275,11 @@ struct Object
     // Bucket map
     Entry* m_entries;
 
-    // Number of stored elements
-    size_t m_size;
-
     // Number of buckets in the map, must be a power of 2
     size_t m_buckets;
+
+    // Number of stored elements
+    size_t m_size;
 
   private: // Constructor for Value
     Object(size_t capacity);
@@ -268,6 +288,15 @@ struct Object
     void copy_other(const Object& other);
 
     void move_other(Object&& other);
+
+    // Rehash the entries with at least `buckets` number of buckets
+    void rehash(size_t buckets);
+
+    // Resize to hold at least `buckets` number of buckets, frees for size 0
+    void resize(size_t buckets);
+
+    // True if the map should rehash given the current size
+    bool should_rehash() const;
 };
 
 // Returned by parser, evaluates to boolean `false` if there is an error message
