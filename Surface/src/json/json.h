@@ -13,7 +13,13 @@ struct StringResult;
 
 // Parse a json string to a json value, contained within ParseResult, which evaluates to boolean
 // `false` and contains an exception message if the parse fails.
-ParseResult parse(const char* json);
+ParseResult parse(const char*& json);
+
+// Optimistically parse a json string, only use this for highly trusted source strings
+Value parse_no_validate(const char*& json);
+
+// Validate a json string
+bool is_valid(const char*& json);
 
 // Convert a json value to a string, result is wrapped for automatic resource cleanup
 StringResult to_string(const Value& value);
@@ -28,6 +34,28 @@ char* str_copy(const char*& str);
 
 // Test if two strings are equal
 bool str_equal(const char*& a, const char*& b);
+
+// Simple stack structure used by parser
+template <typename type> struct stack
+{
+    stack();
+    ~stack();
+
+    bool empty() const;
+
+    type pop();
+    size_t push(type&& value);
+
+    size_t size() const;
+
+    type& top();
+    const type& top() const;
+
+  private:
+    type* m_elements;
+    size_t m_capacity;
+    size_t m_size;
+};
 } // namespace Utility
 
 struct Value
@@ -302,57 +330,39 @@ struct Object
 // Returned by parser, evaluates to boolean `false` if there is an error message
 struct ParseResult
 {
-    ParseResult(Value&& value);
-    ParseResult(const char* message, size_t line, size_t column)
-        : m_message(copy_message(message)), m_line(line), m_column(column) {};
-
+    static ParseResult value(Value&& value);
+    static ParseResult error(const char* message, size_t line, size_t column);
     ~ParseResult();
 
-    operator bool() const
-    {
-        return m_message == nullptr;
-    }
+    operator bool() const;
 
-    const char* what() const
-    {
-        return m_message ? m_message : "No exception";
-    }
+    const char* what() const;
 
     Value&& get();
 
   private:
+    ParseResult(Value&& value);
+    ParseResult(const char* message, size_t line, size_t column)
+        : m_message(Utility::str_copy(message)), m_line(line), m_column(column) {};
+
     Value m_value;
     char* m_message = nullptr;
     size_t m_line = 0, m_column = 0;
-
-  private: // Static methods
-    static char* copy_message(const char* message);
 };
 
 // Simple wrapper for a char* that deletes the string when it goes out of scope, or can release
 // control of the char* if needed.
 struct StringResult
 {
-    StringResult(char* string_to_take) : m_str(string_to_take) {};
+    static StringResult make(char* string);
+    ~StringResult();
 
-    char* string() const
-    {
-        return m_str;
-    }
+    char* string() const;
 
-    char* take_ownership()
-    {
-        char* temp = m_str;
-        m_str = nullptr;
-        return temp;
-    }
-
-    ~StringResult()
-    {
-        delete[] m_str;
-    }
+    char* take_ownership();
 
   private:
+    StringResult(char* string) : m_str(string) {};
     char* m_str;
 };
 
