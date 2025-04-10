@@ -11,6 +11,10 @@ struct Object;
 struct ParseResult;
 struct StringResult;
 
+Value array(size_t capacity = 0);
+
+Value object(size_t capacity = 0);
+
 // Parse a json string to a json value, contained within ParseResult, which evaluates to boolean
 // `false` and contains an exception message if the parse fails.
 ParseResult parse(const char*& json);
@@ -61,6 +65,30 @@ template <typename type> struct stack
     size_t m_size;
 };
 
+// Simple string builder for parser and to-string methods
+struct string_builder
+{
+    string_builder();
+    string_builder(size_t capacity);
+
+    ~string_builder();
+
+    void append(char c);
+    void append(const char* string);
+
+    // For adding multi-byte codepoints
+    void append(unsigned int codepoint);
+
+    StringResult build();
+
+  private:
+    char* c_str;
+    size_t m_capacity;
+    size_t m_size;
+
+    void resize(size_t size);
+};
+
 } // namespace Utility
 
 struct Value
@@ -94,9 +122,9 @@ struct Value
     Value(unsigned long int number) : Value((double) number) {};
     Value(unsigned long long int number) : Value((double) number) {};
 
-    static Value array(size_t capacity = 0);
+    static Value array(size_t capacity);
 
-    static Value object(size_t capacity = 0);
+    static Value object(size_t capacity);
 
   public: // Operators
     Value& operator=(const Value& other);

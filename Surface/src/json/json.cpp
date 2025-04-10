@@ -6,6 +6,16 @@
 namespace Surface::JSON
 {
 
+Value array(size_t capacity)
+{
+    return Value::array(capacity);
+}
+
+Value object(size_t capacity)
+{
+    return Value::object(capacity);
+}
+
 ParseResult parse(const char*& json)
 {
     ParseResult valid = validate(json);
@@ -698,6 +708,107 @@ template <typename type> const type& stack<type>::top() const
     }
 
     return m_elements[m_size - 1];
+}
+
+string_builder::string_builder()
+{
+    resize(8);
+}
+
+string_builder::string_builder(size_t capacity)
+{
+    resize(capacity);
+}
+
+string_builder::~string_builder()
+{
+    delete[] c_str;
+    m_capacity = 0;
+    m_size = 0;
+}
+
+void string_builder::append(char c)
+{
+    resize(m_size + 1);
+    c_str[m_size - 1] = c;
+}
+
+void string_builder::append(const char* string)
+{
+    size_t length = 0;
+    while (string[length] > 0)
+    {
+        ++length;
+    }
+
+    size_t old_size = m_size;
+    resize(m_size + length);
+
+    for (size_t i = 0; i < length; ++i)
+    {
+        c_str[old_size + i] = string[i];
+    }
+}
+
+void string_builder::append(unsigned int codepoint)
+{
+    if (codepoint < 0x80)
+    {
+        resize(m_size + 1);
+        c_str[m_size - 1] = codepoint;
+    }
+    else if (codepoint < 0x800)
+    {
+        resize(m_size + 2);
+        c_str[m_size - 2] = 0xC0 | (codepoint >> 6);
+        c_str[m_size - 1] = 0x80 | (codepoint & 0x3F);
+    }
+    else if (codepoint < 0x10000)
+    {
+        resize(m_size + 3);
+        c_str[m_size - 3] = 0xE0 | (codepoint >> 12);
+        c_str[m_size - 2] = 0x80 | ((codepoint >> 6) & 0x3F);
+        c_str[m_size - 1] = 0x80 | (codepoint & 0x3F);
+    }
+    else if (codepoint < 0x110000)
+    {
+        resize(m_size + 4);
+        c_str[m_size - 4] = 0xF0 | (codepoint >> 18);
+        c_str[m_size - 3] = 0x80 | ((codepoint >> 12) & 0x3F);
+        c_str[m_size - 2] = 0x80 | ((codepoint >> 6) & 0x3F);
+        c_str[m_size - 1] = 0x80 | (codepoint & 0x3F);
+    }
+}
+
+StringResult string_builder::build()
+{
+    StringResult result = StringResult::make(c_str);
+
+    c_str = nullptr;
+    m_capacity = 0;
+    m_size = 0;
+
+    return result;
+}
+
+void string_builder::resize(size_t size)
+{
+    if (size <= m_capacity)
+    {
+        m_size = size;
+        return;
+    }
+
+    m_capacity *= 2;
+    if (m_capacity < size)
+    {
+        m_capacity = size;
+    }
+
+    c_str = (char*) std::realloc(c_str, m_capacity);
+    m_size = size;
+
+    return;
 }
 
 } // namespace Utility
