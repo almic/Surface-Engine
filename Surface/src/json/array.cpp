@@ -231,7 +231,7 @@ void Array::resize(size_t capacity)
         return;
     }
 
-    m_entries = (Value*) std::realloc(m_entries, sizeof(Value) * capacity);
+    m_entries = (Value*) std::realloc(m_entries, capacity * sizeof(Value));
     m_capacity = capacity;
 }
 
@@ -257,7 +257,10 @@ void Array::trim()
         return;
     }
 
-    m_entries = (Value*) std::realloc(m_entries, sizeof(Value) * m_size);
+    // Since this always shrinks the memory, it must always succeed
+#pragma warning(disable : 6308)
+    m_entries = (Value*) std::realloc(m_entries, m_capacity * sizeof(Value));
+#pragma warning(default : 6308)
     m_capacity = m_size;
 }
 

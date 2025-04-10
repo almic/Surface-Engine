@@ -29,6 +29,10 @@ namespace Utility
 // String max size
 inline constexpr size_t MAX_SIZE = -1;
 
+// Decodes a sequence of 4 hex digits to an integer, returns false if any of the first characters
+// are not hex
+bool parse_4hex(const char* hex, uint16_t& result);
+
 // Copy a string and return a new string
 char* str_copy(const char*& str);
 
@@ -56,6 +60,7 @@ template <typename type> struct stack
     size_t m_capacity;
     size_t m_size;
 };
+
 } // namespace Utility
 
 struct Value
@@ -332,9 +337,12 @@ struct ParseResult
 {
     static ParseResult value(Value&& value);
     static ParseResult error(const char* message, size_t line, size_t column);
+
+    ParseResult(ParseResult&& other);
     ~ParseResult();
 
     operator bool() const;
+    ParseResult& operator=(ParseResult&& other);
 
     const char* what() const;
 
@@ -344,6 +352,8 @@ struct ParseResult
     ParseResult(Value&& value);
     ParseResult(const char* message, size_t line, size_t column)
         : m_message(Utility::str_copy(message)), m_line(line), m_column(column) {};
+
+    void move_other(ParseResult&& other);
 
     Value m_value;
     char* m_message = nullptr;
