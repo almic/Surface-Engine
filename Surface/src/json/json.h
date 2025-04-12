@@ -38,10 +38,13 @@ inline constexpr size_t MAX_SIZE = -1;
 bool parse_4hex(const char* hex, uint16_t& result);
 
 // Copy a string and return a new string
-char* str_copy(const char*& str);
+char* str_copy(const char* string);
 
 // Test if two strings are equal
-bool str_equal(const char*& a, const char*& b);
+bool str_equal(const char* a, const char* b);
+
+// Quickly compute the length of a null-terminated string
+size_t str_len(const char* string);
 
 // Simple stack structure used by parser
 template <typename type> struct stack
@@ -130,7 +133,7 @@ struct Value
     Value& operator=(const Value& other);
     Value& operator=(Value&& other) noexcept;
 
-    template <typename Type> Value& operator=(const Type& other)
+    template <typename Type> inline Value& operator=(const Type& other)
     {
         *this = Value(other);
         return *this;
@@ -204,7 +207,7 @@ struct Array
     // Add a value to the end of the array, returns the new size
     size_t append(Value&& value);
 
-    template <typename Type> size_t append(Type value)
+    template <typename Type> inline size_t append(Type value)
     {
         return append(Value(value));
     }
@@ -219,7 +222,7 @@ struct Array
     // Add a value at the specified position, must be <= size, returns the new size
     size_t insert(Value&& value, size_t index);
 
-    template <typename Type> size_t insert(Type value, size_t index)
+    template <typename Type> inline size_t insert(Type value, size_t index)
     {
         return insert(Value(value), index);
     }
@@ -227,7 +230,7 @@ struct Array
     // Add a value to the front of the array, returns the new size
     size_t push(Value&& value);
 
-    template <typename Type> size_t push(Type value)
+    template <typename Type> inline size_t push(Type value)
     {
         return push(Value(value));
     }
@@ -247,7 +250,7 @@ struct Array
     // Set the value at a given index and return the old value
     Value set(Value&& value, size_t index);
 
-    size_t size() const
+    inline size_t size() const
     {
         return m_size;
     }
@@ -281,20 +284,13 @@ struct Object
     {
         Key key = nullptr;
         Value value;
-
-        Entry* next = nullptr;
-
-        Entry() {};
-        Entry(const Key& key);
-        Entry(const Entry& other);
-        Entry(Entry&& other);
-        ~Entry();
-
-        bool operator==(const Entry& other);
     };
 
-    Value& operator[](const Key& key);
-    const Value& operator[](const Key& key) const;
+    struct EntryIterator;
+    struct ConstEntryIterator;
+
+    Value& operator[](const Key key);
+    const Value& operator[](const Key key) const;
     Object& operator=(const Object& other);
     Object& operator=(Object&& other) noexcept;
 
@@ -304,24 +300,28 @@ struct Object
     // Number of buckets that the map should have given current size
     size_t desired_buckets() const;
 
+    // Entry iterators
+    EntryIterator entries();
+    const ConstEntryIterator entries() const;
+
     // Retrieve a value with the given key, returns nullptr if it does not exist
-    Value* get(const Key& key);
-    const Value* get(const Key& key) const;
+    Value* get(const Key key);
+    const Value* get(const Key key) const;
 
     // Retrieve a value with the given key, returns default if it does not exist
-    Value& get(const Key& key, Value& dfault);
-    const Value& get(const Key& key, const Value& dfault) const;
+    Value& get(const Key key, Value& dfault);
+    const Value& get(const Key key, const Value& dfault) const;
 
     // Retrieve a value if it exists, or insert a null value and return it
-    Value& get_or_put(const Key& key);
+    Value& get_or_put(const Key key);
 
     // Test if the map contains the given key
-    bool has(const Key& key) const;
+    bool has(const Key key) const;
 
     // Put a value at the given key, replacing an existing value if it exists, returns the new map
     // size
-    size_t put(const Key& key, const Value& value);
-    size_t put(const Key& key, Value&& value);
+    size_t put(const Key key, const Value& value);
+    size_t put(const Key key, Value&& value);
 
     // Get the number of mappings
     inline size_t size() const
@@ -330,11 +330,86 @@ struct Object
     }
 
   public: // Hash method
-    static size_t hash(const Key& key);
+    static size_t hash(const Key key);
+
+  private:
+    // Storage structure
+    struct TableEntry : Entry
+    {
+        TableEntry* next = nullptr;
+
+        TableEntry() {};
+        TableEntry(const Key key);
+        TableEntry(const TableEntry& other);
+        TableEntry(TableEntry&& other) noexcept;
+        ~TableEntry();
+
+        bool operator==(const TableEntry& other);
+    };
+
+    struct ConstEntryIterator
+    {
+        ConstEntryIterator(TableEntry* entries, size_t buckets, size_t size);
+
+        ConstEntryIterator begin() const;
+        ConstEntryIterator end() const;
+
+        bool operator==(const ConstEntryIterator& other) const;
+
+        inline bool operator!=(const ConstEntryIterator& other) const
+        {
+            return !(*this == other);
+        }
+
+        const ConstEntryIterator& operator++() const;
+        const Entry& operator*() const;
+
+      private:
+        // For begin/ end methods
+        ConstEntryIterator(const ConstEntryIterator& other, TableEntry* pos)
+            : m_entries(other.m_entries), m_buckets(other.m_buckets), m_size(other.m_size),
+              m_current(pos)
+        {
+        }
+
+      private:
+        TableEntry* m_entries;
+        mutable size_t m_buckets;
+        mutable size_t m_size;
+        mutable TableEntry* m_current;
+
+        friend EntryIterator;
+    };
+
+    struct EntryIterator : ConstEntryIterator
+    {
+        EntryIterator(TableEntry* entries, size_t buckets, size_t size)
+            : ConstEntryIterator(entries, buckets, size)
+        {
+        }
+
+        EntryIterator begin() const;
+        EntryIterator end() const;
+
+        inline EntryIterator& operator++()
+        {
+            ConstEntryIterator::operator++();
+            return *this;
+        }
+
+        Entry& operator*() const;
+
+      private:
+        // For begin/ end methods
+        EntryIterator(const EntryIterator& other, TableEntry* pos) : ConstEntryIterator(other, pos)
+        {
+        }
+    };
+
 
   private: // Members
     // Bucket map
-    Entry* m_entries;
+    TableEntry* m_entries;
 
     // Number of buckets in the map, must be a power of 2
     size_t m_buckets;
@@ -395,7 +470,7 @@ struct StringResult
     static StringResult make(char* string);
     ~StringResult();
 
-    char* string() const;
+    const char* string() const;
 
     char* take_ownership();
 

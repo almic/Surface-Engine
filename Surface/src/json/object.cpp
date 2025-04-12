@@ -13,24 +13,25 @@ inline constexpr uint8_t BUCKET_SIZE = 2;
 inline constexpr uint8_t BUCKET_GROWTH_HIGH = 8;
 inline constexpr uint16_t BUCKET_GROWTH_BOUND = 512;
 
-Object::Entry::Entry(const Key& key) : key(Utility::str_copy((const char*&) key))
+Object::TableEntry::TableEntry(const Key key) : Entry{Utility::str_copy(key)}
 {
 }
 
-Object::Entry::Entry(const Entry& other)
-    : key(other.key ? Utility::str_copy((const char*&) other.key) : nullptr), value(other.value),
-      next(other.next ? new Entry(*other.next) : nullptr)
+Object::TableEntry::TableEntry(const TableEntry& other)
+    : Entry{other.key ? Utility::str_copy(other.key) : nullptr, other.value},
+      next(other.next ? new TableEntry(*other.next) : nullptr)
 {
 }
 
-Object::Entry::Entry(Entry&& other) : key(other.key), value(std::move(other.value))
+Object::TableEntry::TableEntry(TableEntry&& other) noexcept
+    : Entry{other.key, std::move(other.value)}
 {
     // Don't move other's next
     other.key = nullptr;
     other.next = nullptr;
 }
 
-Object::Entry::~Entry()
+Object::TableEntry::~TableEntry()
 {
     delete[] key;
     delete next;
@@ -40,7 +41,7 @@ Object::Entry::~Entry()
     value.~Value();
 }
 
-bool Object::Entry::operator==(const Entry& other)
+bool Object::TableEntry::operator==(const TableEntry& other)
 {
     if (this == &other)
     {
@@ -52,10 +53,111 @@ bool Object::Entry::operator==(const Entry& other)
         return key == other.key;
     }
 
-    return Utility::str_equal((const char*&) key, (const char*&) other.key);
+    return Utility::str_equal(key, other.key);
 }
 
-size_t Object::hash(const Key& key)
+Object::ConstEntryIterator::ConstEntryIterator(TableEntry* entries, size_t buckets, size_t size)
+    : m_entries(entries), m_buckets(buckets), m_size(size)
+{
+    m_current = nullptr;
+}
+
+Object::ConstEntryIterator Object::ConstEntryIterator::begin() const
+{
+    auto itr = ConstEntryIterator(*this, m_entries == nullptr ? nullptr : m_entries + m_buckets);
+    ++itr;
+    return itr;
+}
+
+Object::ConstEntryIterator Object::ConstEntryIterator::end() const
+{
+    return ConstEntryIterator(*this, nullptr);
+}
+
+bool Object::ConstEntryIterator::operator==(const ConstEntryIterator& other) const
+{
+    return m_current == other.m_current;
+}
+
+const Object::ConstEntryIterator& Object::ConstEntryIterator::operator++() const
+{
+    // Faster way to check for end of iteration/ empty iterators
+    if (m_size == 0)
+    {
+        m_current == nullptr;
+        return *this;
+    }
+
+    // Only do after initialization call
+    if (!(m_current == m_entries + m_buckets))
+    {
+        --m_size;
+
+        if (m_size == 0)
+        {
+            // Done
+            m_current = nullptr;
+            return *this;
+        }
+
+        // Forwards through the linked entries
+        if (m_current->next != nullptr)
+        {
+            m_current = m_current->next;
+            return *this;
+        }
+    }
+
+    // For safety
+    if (m_buckets == 0)
+    {
+        m_current = nullptr;
+        m_size = 0;
+        return *this;
+    }
+
+    // Backwards through the buckets
+    do
+    {
+        --m_buckets;
+        m_current = m_entries + m_buckets;
+    }
+    // The `m_buckets > 0` should never be false, but just in case
+    while (m_current->key == nullptr && m_buckets > 0);
+
+    // Just in case we run out of buckets, but should never happen
+    if (m_current->key == nullptr)
+    {
+        m_current == nullptr;
+        m_size = 0;
+    }
+
+    return *this;
+}
+
+const Object::Entry& Object::ConstEntryIterator::operator*() const
+{
+    return *m_current;
+}
+
+Object::EntryIterator Object::EntryIterator::begin() const
+{
+    auto itr = EntryIterator(*this, m_entries == nullptr ? nullptr : m_entries + m_buckets);
+    ++itr;
+    return itr;
+}
+
+Object::EntryIterator Object::EntryIterator::end() const
+{
+    return EntryIterator(*this, nullptr);
+}
+
+Object::Entry& Object::EntryIterator::operator*() const
+{
+    return const_cast<Entry&>(ConstEntryIterator::operator*());
+}
+
+size_t Object::hash(const Key key)
 {
     static constexpr size_t PRIME = 1099511628211;
     size_t result = 14695981039346656037;
@@ -86,7 +188,7 @@ void Object::copy_other(const Object& other)
 
     for (size_t index = 0; index < m_buckets; ++index)
     {
-        new (m_entries + index) Entry(other.m_entries[index]);
+        new (m_entries + index) TableEntry(other.m_entries[index]);
     }
 }
 
@@ -128,12 +230,12 @@ Object::Object(Object&& other) noexcept
     move_other(std::move(other));
 }
 
-Value& Object::operator[](const Key& key)
+Value& Object::operator[](const Key key)
 {
     return get_or_put(key);
 }
 
-const Value& Object::operator[](const Key& key) const
+const Value& Object::operator[](const Key key) const
 {
     const Value* value = get(key);
     if (value != nullptr)
@@ -181,7 +283,7 @@ void Object::clear()
 
     for (size_t index = 0; index < m_buckets; ++index)
     {
-        m_entries[index].~Entry();
+        m_entries[index].~TableEntry();
     }
 
     m_size = 0;
@@ -201,12 +303,12 @@ size_t Object::desired_buckets() const
     return desired < MIN_BUCKETS ? MIN_BUCKETS : desired;
 }
 
-Value* Object::get(const Key& key)
+Value* Object::get(const Key key)
 {
     return const_cast<Value*>(static_cast<const Object&>(*this).get(key));
 }
 
-const Value* Object::get(const Key& key) const
+const Value* Object::get(const Key key) const
 {
     if (key == nullptr || m_size == 0)
     {
@@ -214,7 +316,7 @@ const Value* Object::get(const Key& key) const
     }
 
     size_t bucket_index = hash(key) & (m_buckets - 1);
-    Entry* entry = m_entries + bucket_index;
+    TableEntry* entry = m_entries + bucket_index;
     do
     {
         if (entry->key == nullptr)
@@ -222,7 +324,7 @@ const Value* Object::get(const Key& key) const
             return nullptr;
         }
 
-        if (Utility::str_equal((const char*&) key, (const char*&) entry->key))
+        if (Utility::str_equal(key, entry->key))
         {
             return &entry->value;
         }
@@ -234,12 +336,12 @@ const Value* Object::get(const Key& key) const
     return nullptr;
 }
 
-Value& Object::get(const Key& key, Value& dfault)
+Value& Object::get(const Key key, Value& dfault)
 {
     return const_cast<Value&>(static_cast<const Object&>(*this).get(key, dfault));
 }
 
-const Value& Object::get(const Key& key, const Value& dfault) const
+const Value& Object::get(const Key key, const Value& dfault) const
 {
     const Value* value = get(key);
     if (value == nullptr)
@@ -249,7 +351,7 @@ const Value& Object::get(const Key& key, const Value& dfault) const
     return *value;
 }
 
-Value& Object::get_or_put(const Key& key)
+Value& Object::get_or_put(const Key key)
 {
     if (key == nullptr)
     {
@@ -265,8 +367,8 @@ Value& Object::get_or_put(const Key& key)
 
     size_t key_hash = hash(key);
     size_t bucket_index = key_hash & (m_buckets - 1);
-    Entry* entry = m_entries + bucket_index;
-    Entry* parent = nullptr;
+    TableEntry* entry = m_entries + bucket_index;
+    TableEntry* parent = nullptr;
 
     do
     {
@@ -275,7 +377,7 @@ Value& Object::get_or_put(const Key& key)
             break;
         }
 
-        if (Utility::str_equal((const char*&) key, (const char*&) entry->key))
+        if (Utility::str_equal(key, entry->key))
         {
             return entry->value;
         }
@@ -312,28 +414,28 @@ Value& Object::get_or_put(const Key& key)
     // If entry, that's our place (main bucket)
     if (entry != nullptr)
     {
-        entry->key = Utility::str_copy((const char*&) key);
+        entry->key = Utility::str_copy(key);
         return entry->value;
     }
 
     // Otherwise, new entry on parent
-    parent->next = new Entry(key);
+    parent->next = new TableEntry(key);
     return parent->next->value;
 }
 
-bool Object::has(const Key& key) const
+bool Object::has(const Key key) const
 {
     return get(key) != nullptr;
 }
 
-size_t Object::put(const Key& key, const Value& value)
+size_t Object::put(const Key key, const Value& value)
 {
     Value& current = get_or_put(key);
     current = value;
     return m_size;
 }
 
-size_t Object::put(const Key& key, Value&& value)
+size_t Object::put(const Key key, Value&& value)
 {
     Value& current = get_or_put(key);
     current = std::move(value);
@@ -358,12 +460,12 @@ void Object::rehash(size_t buckets)
     m_buckets = buckets < MIN_BUCKETS ? MIN_BUCKETS : std::bit_ceil(buckets);
     size_t mask = m_buckets - 1;
 
-    Entry* old_entries = m_entries;
-    m_entries = new Entry[m_buckets];
+    TableEntry* old_entries = m_entries;
+    m_entries = new TableEntry[m_buckets];
 
     for (size_t bucket = 0; bucket < old_buckets; ++bucket)
     {
-        Entry* entry = old_entries + bucket;
+        TableEntry* entry = old_entries + bucket;
         if (entry->key == nullptr)
         {
             continue;
@@ -372,19 +474,22 @@ void Object::rehash(size_t buckets)
         size_t max = 0;
         do
         {
-            Entry* next = entry->next;
+            TableEntry* next = entry->next;
 
             size_t bucket_index = hash(entry->key) & mask;
 
             if ((m_entries + bucket_index)->key == nullptr)
             {
+                // next is not actually moved, it is ignored in the move constructor
+#pragma warning(disable : 26800)
                 // Place in bucket
-                new (m_entries + bucket_index) Entry(std::move(*entry));
+                new (m_entries + bucket_index) TableEntry(std::move(*entry));
+#pragma warning(default : 26800)
             }
             else
             {
                 // Linked entry
-                Entry* parent = m_entries + bucket_index;
+                TableEntry* parent = m_entries + bucket_index;
                 while (parent->next != nullptr)
                 {
                     parent = parent->next;
@@ -399,7 +504,7 @@ void Object::rehash(size_t buckets)
                 else
                 {
                     // Moving a root entry to a sub-entry requires new memory
-                    parent->next = new Entry(std::move(*entry));
+                    parent->next = new TableEntry(std::move(*entry));
                 }
             }
 
@@ -432,14 +537,14 @@ void Object::resize(size_t buckets)
     buckets = buckets < MIN_BUCKETS ? MIN_BUCKETS : std::bit_ceil(buckets);
 
     // Operate under the assumption that shrinking deallocates only empty entries
-    m_entries = (Entry*) std::realloc(m_entries, buckets * sizeof(Entry));
+    m_entries = (TableEntry*) std::realloc(m_entries, buckets * sizeof(TableEntry));
 
     if (m_buckets < buckets)
     {
         // Initialize memory
         for (size_t offset = m_buckets; offset < buckets; ++offset)
         {
-            new (m_entries + offset) Entry;
+            new (m_entries + offset) TableEntry;
         }
     }
 
