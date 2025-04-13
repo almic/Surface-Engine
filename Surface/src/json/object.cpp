@@ -303,6 +303,16 @@ size_t Object::desired_buckets() const
     return desired < MIN_BUCKETS ? MIN_BUCKETS : desired;
 }
 
+Object::EntryIterator Object::entries()
+{
+    return EntryIterator(m_entries, m_buckets, m_size);
+}
+
+const Object::ConstEntryIterator Object::entries() const
+{
+    return ConstEntryIterator(m_entries, m_buckets, m_size);
+}
+
 Value* Object::get(const Key key)
 {
     return const_cast<Value*>(static_cast<const Object&>(*this).get(key));

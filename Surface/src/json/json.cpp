@@ -190,16 +190,15 @@ StringResult to_string(const Value& value)
         case FP_NORMAL:
         case FP_SUBNORMAL:
         {
-
             // 9 = 1 sign character + 1 leading digit + 1 decimal point + 1 exponent + 1 exponent
             // sign + 3 exponent digits + 1 null character -0.E+XXX\0
-            static inline constexpr size_t NUMBER_BUFF_SIZE =
-                std::numeric_limits<double>::digits10 + 9;
+            static inline constexpr int NUMBER_EXTRA = 9;
+            static inline constexpr int NUMBER_PRECISION = std::numeric_limits<double>::digits10;
+            static inline constexpr size_t NUMBER_BUFF_SIZE = NUMBER_PRECISION + 9;
 
             // Use stl formatting
             char* number = new char[NUMBER_BUFF_SIZE]{0};
-            std::snprintf(number, NUMBER_BUFF_SIZE, "%.*G", std::numeric_limits<double>::digits10,
-                          dbl);
+            std::snprintf(number, NUMBER_BUFF_SIZE, "%.*G", NUMBER_PRECISION, dbl);
             return StringResult::make(number);
         }
         case FP_ZERO:
