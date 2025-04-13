@@ -38,6 +38,8 @@ int App::run()
 
     stopped = true;
 
+    teardown();
+
     return error_code;
 }
 

@@ -171,6 +171,15 @@ class App
     };
 
     /**
+     * @brief Called once in `App::run()` just before exiting. Implement any final clean-up logic
+     * here.
+     */
+    virtual void teardown()
+    {
+        return;
+    }
+
+    /**
      * Contains the main loop of the application, called by `App::run()` after `App::setup()`
      * completes with no error.
      *
