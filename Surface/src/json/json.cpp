@@ -19,6 +19,9 @@ Value object(size_t capacity)
     return Value::object(capacity);
 }
 
+// Internal validation method
+static ParseResult validate(const char*& json);
+
 ParseResult parse(const char*& json)
 {
     ParseResult valid = validate(json);
@@ -192,9 +195,9 @@ StringResult to_string(const Value& value)
         {
             // 9 = 1 sign character + 1 leading digit + 1 decimal point + 1 exponent + 1 exponent
             // sign + 3 exponent digits + 1 null character -0.E+XXX\0
-            static inline constexpr int NUMBER_EXTRA = 9;
-            static inline constexpr int NUMBER_PRECISION = std::numeric_limits<double>::digits10;
-            static inline constexpr size_t NUMBER_BUFF_SIZE = NUMBER_PRECISION + 9;
+            static constexpr int NUMBER_EXTRA = 9;
+            static constexpr int NUMBER_PRECISION = std::numeric_limits<double>::digits10;
+            static constexpr size_t NUMBER_BUFF_SIZE = NUMBER_PRECISION + 9;
 
             // Use stl formatting
             char* number = new char[NUMBER_BUFF_SIZE]{0};
@@ -847,7 +850,7 @@ size_t str_len(const char* string)
 template <typename type> stack<type>::stack()
 {
     m_capacity = 4;
-    m_elements = std::malloc(m_capacity * sizeof(type));
+    m_elements = (type*) std::malloc(m_capacity * sizeof(type));
     m_size = 0;
 }
 
@@ -886,11 +889,11 @@ template <typename type> size_t stack<type>::push(type&& value)
     if (m_size == m_capacity)
     {
         m_capacity = m_capacity * 2;
-        m_elements = std::realloc(m_elements, m_capacity * sizeof(type));
+        m_elements = (type*) std::realloc(m_elements, m_capacity * sizeof(type));
     }
 
     new (m_elements + m_size) type(std::move(value));
-    ++m_size;
+    return ++m_size;
 }
 
 template <typename type> size_t stack<type>::size() const

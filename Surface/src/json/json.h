@@ -286,9 +286,11 @@ struct Object
         Value value;
     };
 
+  private:
     struct EntryIterator;
     struct ConstEntryIterator;
 
+  public:
     Value& operator[](const Key key);
     const Value& operator[](const Key key) const;
     Object& operator=(const Object& other);

@@ -84,7 +84,7 @@ const Object::ConstEntryIterator& Object::ConstEntryIterator::operator++() const
     // Faster way to check for end of iteration/ empty iterators
     if (m_size == 0)
     {
-        m_current == nullptr;
+        m_current = nullptr;
         return *this;
     }
 
@@ -128,7 +128,7 @@ const Object::ConstEntryIterator& Object::ConstEntryIterator::operator++() const
     // Just in case we run out of buckets, but should never happen
     if (m_current->key == nullptr)
     {
-        m_current == nullptr;
+        m_current = nullptr;
         m_size = 0;
     }
 
