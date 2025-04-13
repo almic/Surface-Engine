@@ -577,6 +577,12 @@ bool write_platform_console(Console& console, const char* text)
 
             count = strnlen(text, (size_t) -1);
 
+            // This can be an empty string sent to us to flush the buffer
+            if (count == 0)
+            {
+                break;
+            }
+
             // If we have too much, buffer it instead and let the above handle it
             if (count > PIPE_BUFFER_SIZE)
             {
