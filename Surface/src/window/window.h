@@ -1,5 +1,9 @@
 #pragma once
 
+// TODO: transparency stuff like this:
+//       https://stackoverflow.com/questions/3970066/creating-a-transparent-window-in-c-win32
+//       https://faithlife.codes/blog/2008/09/displaying_a_splash_screen_with_c_part_ii/
+
 namespace Surface
 {
 
