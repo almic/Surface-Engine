@@ -10,27 +10,6 @@ static uint64_t cast_ptr(void* ptr)
     return *((uint64_t*) &ptr);
 }
 
-static char* str_copy(const char* string)
-{
-    size_t length = 0;
-    while (length < (size_t) -2)
-    {
-        if (string[length] == 0)
-        {
-            break;
-        }
-        ++length;
-    }
-
-    char* copy = new char[length + 1];
-    for (size_t i = 0; i < length; ++i)
-    {
-        copy[i] = string[i];
-    }
-    copy[length] = 0;
-    return copy;
-}
-
 void Value::copy_other(const Value& other)
 {
     switch (other.type)
@@ -58,7 +37,7 @@ void Value::copy_other(const Value& other)
     case String:
     {
         type = String;
-        char* copy = str_copy(other.to_string());
+        char* copy = Utility::str_copy(other.to_string());
         value = cast_ptr(copy);
         break;
     }
@@ -87,7 +66,9 @@ void Value::move_other(Value&& other)
 {
     type = other.type;
     value = other.value;
-    other.clear();
+
+    other.type = Null;
+    other.value = 0;
 }
 
 Value::Value(const Value& other)
@@ -95,7 +76,7 @@ Value::Value(const Value& other)
     copy_other(other);
 }
 
-Value::Value(Value&& other)
+Value::Value(Value&& other) noexcept
 {
     move_other(std::move(other));
 }
@@ -107,7 +88,7 @@ Value::~Value()
 
 Value::Value(const char* string)
 {
-    char* copy = str_copy(string);
+    char* copy = Utility::str_copy(string);
     value = cast_ptr(copy);
     type = String;
 }

@@ -34,9 +34,8 @@ void Array::move_other(Array&& other) noexcept
     other.m_size = 0;
 }
 
-Array::Array(size_t capacity)
+Array::Array(size_t capacity) : m_size(0), m_entries(nullptr), m_capacity(0)
 {
-    m_size = 0;
     resize(capacity);
 }
 
@@ -50,7 +49,7 @@ Array::~Array()
     m_entries = nullptr;
 }
 
-Array::Array(const Array& other)
+Array::Array(const Array& other) : m_size(0), m_entries(nullptr), m_capacity(0)
 {
     copy_other(other);
 }
@@ -62,6 +61,12 @@ Array::Array(Array&& other) noexcept
 
 Value& Array::operator[](size_t index)
 {
+    // Support adding new values if requesting the last element
+    if (index == m_size)
+    {
+        insert(nullptr, index);
+    }
+
     return get(index);
 }
 
@@ -152,17 +157,17 @@ size_t Array::insert(Value&& value, size_t index)
     if (new_size > m_capacity)
     {
         // Double capacity
-        m_capacity = m_capacity * 2;
-        if (m_capacity < new_size)
+        size_t new_capacity = m_capacity * 2;
+        if (new_capacity < new_size)
         {
-            m_capacity = new_size;
+            new_capacity = new_size;
         }
 
-        resize(m_capacity);
+        resize(new_capacity);
     }
 
     // Move tailing elements back
-    if (m_size - 1 >= index)
+    if (m_size - index >= 1)
     {
         // clang-format off
         std::memmove(
@@ -257,11 +262,12 @@ void Array::trim()
         return;
     }
 
+    m_capacity = m_size;
+
     // Since this always shrinks the memory, it must always succeed
 #pragma warning(disable : 6308)
     m_entries = (Value*) std::realloc(m_entries, m_capacity * sizeof(Value));
 #pragma warning(default : 6308)
-    m_capacity = m_size;
 }
 
 } // namespace Surface::JSON

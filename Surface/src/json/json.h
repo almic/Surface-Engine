@@ -17,13 +17,13 @@ Value object(size_t capacity = 0);
 
 // Parse a json string to a json value, contained within ParseResult, which evaluates to boolean
 // `false` and contains an exception message if the parse fails.
-ParseResult parse(const char*& json);
+ParseResult parse(const char* json);
 
 // Optimistically parse a json string, only use this for highly trusted source strings
-Value parse_no_validate(const char*& json);
+Value parse_no_validate(const char* json);
 
 // Validate a json string
-bool is_valid(const char*& json);
+bool is_valid(const char* json);
 
 // Convert a json value to a string, result is wrapped for automatic resource cleanup
 StringResult to_string(const Value& value);
@@ -109,7 +109,7 @@ struct Value
   public: // Contructors
     Value() : type(Null), value(0) {};
     Value(const Value& other);
-    Value(Value&& other);
+    Value(Value&& other) noexcept;
     ~Value();
 
     Value(const char* string);
@@ -443,11 +443,11 @@ struct ParseResult
     static ParseResult value(Value&& value);
     static ParseResult error(const char* message, size_t line, size_t column);
 
-    ParseResult(ParseResult&& other);
+    ParseResult(ParseResult&& other) noexcept;
     ~ParseResult();
 
     operator bool() const;
-    ParseResult& operator=(ParseResult&& other);
+    ParseResult& operator=(ParseResult&& other) noexcept;
 
     const char* what() const;
 

@@ -20,9 +20,9 @@ Value object(size_t capacity)
 }
 
 // Internal validation method
-static ParseResult validate(const char*& json);
+static ParseResult validate(const char* json);
 
-ParseResult parse(const char*& json)
+ParseResult parse(const char* json)
 {
     ParseResult valid = validate(json);
     if (!valid)
@@ -68,13 +68,13 @@ enum State : unsigned char
     END,
 };
 
-Value parse_no_validate(const char*& json)
+Value parse_no_validate(const char* json)
 {
     // TODO
     return Value();
 }
 
-bool is_valid(const char*& json)
+bool is_valid(const char* json)
 {
     return !!validate(json);
 }
@@ -275,11 +275,11 @@ StringResult to_string(const Value& value)
 }
 
 // Validate a string for the validate method
-static bool validate_string(const char*& json, size_t& next, const size_t& line, size_t& column,
+static bool validate_string(const char* json, size_t& next, const size_t& line, size_t& column,
                             ParseResult& error);
 
 // Internal validation method, returns an error result or an empty null result
-static ParseResult validate(const char*& json)
+static ParseResult validate(const char* json)
 {
     using Type = Value::Type;
 
@@ -403,6 +403,7 @@ static ParseResult validate(const char*& json)
                     return ParseResult::error("Invalid symbol", line, column);
                 }
 
+                ++next;
                 column += 3;
                 NEXT_VALUE;
                 break;
@@ -415,6 +416,7 @@ static ParseResult validate(const char*& json)
                     return ParseResult::error("Invalid symbol", line, column);
                 }
 
+                ++next;
                 column += 4;
                 NEXT_VALUE;
                 break;
@@ -427,6 +429,7 @@ static ParseResult validate(const char*& json)
                     return ParseResult::error("Invalid symbol", line, column);
                 }
 
+                ++next;
                 column += 3;
                 NEXT_VALUE;
                 break;
@@ -539,6 +542,8 @@ static ParseResult validate(const char*& json)
                 return ParseResult::error("Unknown symbol, expecting a value", line, column);
             }
             }
+
+            break;
         }
         case ARRAY_END:
         {
@@ -560,6 +565,8 @@ static ParseResult validate(const char*& json)
                                           column);
             }
             }
+
+            break;
         }
         case OBJECT_START:
         {
@@ -586,6 +593,7 @@ static ParseResult validate(const char*& json)
                                           column);
             }
             }
+
             break;
         }
         case OBJECT_KEY:
@@ -602,6 +610,7 @@ static ParseResult validate(const char*& json)
             }
 
             state = OBJECT_COLON;
+
             break;
         }
         case OBJECT_COLON:
@@ -635,6 +644,8 @@ static ParseResult validate(const char*& json)
                     "Unknown symbol, expecting `}` or `,` following object key", line, column);
             }
             }
+
+            break;
         }
         case END:
         {
@@ -656,7 +667,7 @@ static ParseResult validate(const char*& json)
     return ParseResult::value(Value());
 } // namespace Surface::JSON
 
-static bool validate_string(const char*& json, size_t& next, const size_t& line, size_t& column,
+static bool validate_string(const char* json, size_t& next, const size_t& line, size_t& column,
                             ParseResult& error)
 {
     char c;
@@ -734,6 +745,8 @@ static bool validate_string(const char*& json, size_t& next, const size_t& line,
                 return false;
             }
             }
+
+            break;
         }
         default:
         {
@@ -923,14 +936,17 @@ template <typename type> const type& stack<type>::top() const
     return m_elements[m_size - 1];
 }
 
-string_builder::string_builder()
+string_builder::string_builder() : string_builder(8)
 {
-    resize(8);
 }
 
-string_builder::string_builder(size_t capacity)
+string_builder::string_builder(size_t capacity) : m_capacity(capacity), m_size(0)
 {
-    resize(capacity);
+    c_str = (char*) std::malloc(m_capacity + 1);
+    for (size_t i = 0; i < m_capacity + 1; ++i)
+    {
+        c_str[i] = '\0';
+    }
 }
 
 string_builder::~string_builder()
@@ -998,7 +1014,7 @@ StringResult string_builder::build()
     // trim to size first
     if (m_size < m_capacity)
     {
-        c_str = (char*) std::realloc(c_str, m_size);
+        c_str = (char*) std::realloc(c_str, m_size + 1);
     }
 
     StringResult result = StringResult::make(c_str);
@@ -1065,7 +1081,7 @@ void ParseResult::move_other(ParseResult&& other)
     other.m_column = 0;
 }
 
-ParseResult::ParseResult(ParseResult&& other)
+ParseResult::ParseResult(ParseResult&& other) noexcept
 {
     move_other(std::move(other));
 }
@@ -1080,7 +1096,7 @@ ParseResult::operator bool() const
     return m_message == nullptr;
 }
 
-ParseResult& ParseResult::operator=(ParseResult&& other)
+ParseResult& ParseResult::operator=(ParseResult&& other) noexcept
 {
     delete[] m_message;
 

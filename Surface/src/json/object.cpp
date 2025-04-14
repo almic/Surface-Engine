@@ -203,10 +203,8 @@ void Object::move_other(Object&& other)
     other.m_size = 0;
 }
 
-Object::Object(size_t capacity)
+Object::Object(size_t capacity) : m_size(0), m_entries(nullptr), m_buckets(0)
 {
-    m_size = 0;
-    m_entries = nullptr;
     resize(BUCKET_SIZE * capacity);
 }
 
@@ -220,7 +218,7 @@ Object::~Object()
     m_entries = nullptr;
 }
 
-Object::Object(const Object& other)
+Object::Object(const Object& other) : m_size(0), m_entries(nullptr), m_buckets(0)
 {
     copy_other(other);
 }
@@ -283,7 +281,8 @@ void Object::clear()
 
     for (size_t index = 0; index < m_buckets; ++index)
     {
-        m_entries[index].~TableEntry();
+        TableEntry entry = m_entries[index];
+        entry.~TableEntry();
     }
 
     m_size = 0;
@@ -538,9 +537,9 @@ void Object::resize(size_t buckets)
         {
             std::free(m_entries);
             m_entries = nullptr;
-            m_buckets = 0;
         }
 
+        m_buckets = 0;
         return;
     }
 
