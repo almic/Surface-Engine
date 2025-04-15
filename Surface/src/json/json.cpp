@@ -174,8 +174,8 @@ StringResult to_string(const Value& value)
         case FP_INFINITE:
         {
             // Use max / min value instead
-            dbl =
-                dbl > 0.0 ? std::numeric_limits<double>::max() : std::numeric_limits<double>::min();
+            dbl = dbl > 0.0 ? std::numeric_limits<double>::max()
+                            : std::numeric_limits<double>::lowest();
 
             // format as finite value
             [[fallthrough]];
