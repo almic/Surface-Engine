@@ -1,5 +1,6 @@
 #pragma once
 
+#include <cstddef>  // nullptr_t
 #include <stdint.h> // uint64_t
 
 namespace Surface::JSON
@@ -11,9 +12,8 @@ struct Object;
 struct ParseResult;
 struct StringResult;
 
-Value array(size_t capacity = 0);
-
-Value object(size_t capacity = 0);
+// Main data type
+using json = Value;
 
 // Parse a json string to a json value, contained within ParseResult, which evaluates to boolean
 // `false` and contains an exception message if the parse fails.
@@ -112,6 +112,8 @@ struct Value
     Value(Value&& other) noexcept;
     ~Value();
 
+    Value(std::nullptr_t) : type(Null), value(0) {};
+
     Value(const char* string);
 
     Value(bool boolean) : value(boolean ? -1 : 0), type(Boolean) {};
@@ -125,13 +127,32 @@ struct Value
     Value(unsigned long int number) : Value((double) number) {};
     Value(unsigned long long int number) : Value((double) number) {};
 
-    static Value array(size_t capacity);
+    static Value array(size_t capacity = 0);
 
-    static Value object(size_t capacity);
+    static Value object(size_t capacity = 0);
+
+    static StringResult to_string(const Value& value);
 
   public: // Operators
     Value& operator=(const Value& other);
     Value& operator=(Value&& other) noexcept;
+
+    // Shortcuts for object/ array
+    Value& operator[](size_t index);
+    const Value& operator[](size_t index) const;
+
+    inline Value& operator[](int index)
+    {
+        return Value::operator[]((size_t) index);
+    }
+
+    inline const Value& operator[](int index) const
+    {
+        return Value::operator[]((size_t) index);
+    }
+
+    Value& operator[](const char* key);
+    const Value& operator[](const char* key) const;
 
     template <typename Type> inline Value& operator=(const Type& other)
     {

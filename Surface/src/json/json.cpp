@@ -9,16 +9,6 @@
 namespace Surface::JSON
 {
 
-Value array(size_t capacity)
-{
-    return Value::array(capacity);
-}
-
-Value object(size_t capacity)
-{
-    return Value::object(capacity);
-}
-
 // Internal validation method
 static ParseResult validate(const char* json);
 

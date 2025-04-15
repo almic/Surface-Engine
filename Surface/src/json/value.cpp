@@ -105,6 +105,11 @@ Value Value::object(size_t capacity)
     return Value(Object, cast_ptr(object));
 }
 
+StringResult Value::to_string(const Value& value)
+{
+    return JSON::to_string(value);
+}
+
 Value& Value::operator=(const Value& other)
 {
     if (this == &other)
@@ -129,6 +134,48 @@ Value& Value::operator=(Value&& other) noexcept
     move_other(std::move(other));
 
     return *this;
+}
+
+Value& Value::operator[](size_t index)
+{
+    if (type != Array)
+    {
+        *this = array();
+    }
+
+    return to_array()[index];
+}
+
+const Value& Value::operator[](size_t index) const
+{
+    if (type != Array)
+    {
+        Value fake;
+        return fake;
+    }
+
+    return to_array()[index];
+}
+
+Value& Value::operator[](const char* key)
+{
+    if (type != Object)
+    {
+        *this = object();
+    }
+
+    return to_object()[(const Object::Key) key];
+}
+
+const Value& Value::operator[](const char* key) const
+{
+    if (type != Object)
+    {
+        Value fake;
+        return fake;
+    }
+
+    return to_object()[(const Object::Key) key];
 }
 
 Value::operator bool() const
