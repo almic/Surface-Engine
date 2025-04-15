@@ -683,6 +683,7 @@ static bool validate_string(const char* json, size_t& next, const size_t& line, 
             {
             case '\\':
             case '/':
+            case '"':
             case 'b':
             case 'f':
             case 'n':
