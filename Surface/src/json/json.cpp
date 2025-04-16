@@ -456,17 +456,9 @@ static ParseResult validate(const char* json)
                 if (c == '0')
                 {
                     c = json[next];
-                    ++next;
-                    ++column;
                 }
-                else
+                else if (c >= '1' && c <= '9')
                 {
-                    if (c < '1' || c > '9')
-                    {
-                        return ParseResult::error("Invalid number after `-` character", line,
-                                                  column);
-                    }
-
                     c = json[next];
                     while (c >= '0' && c <= '9' && next < Utility::MAX_SIZE)
                     {
@@ -475,12 +467,17 @@ static ParseResult validate(const char* json)
                         c = json[next];
                     }
                 }
+                else
+                {
+                    return ParseResult::error("Invalid number after `-` character", line, column);
+                }
+
 
                 if (c == '.')
                 {
-                    c = json[next];
                     ++next;
                     ++column;
+                    c = json[next];
 
                     if (c < '0' || c > '9')
                     {
@@ -488,7 +485,6 @@ static ParseResult validate(const char* json)
                                                   column);
                     }
 
-                    c = json[next];
                     while (c >= '0' && c <= '9' && next < Utility::MAX_SIZE)
                     {
                         ++next;
@@ -499,15 +495,15 @@ static ParseResult validate(const char* json)
 
                 if (c == 'e' || c == 'E')
                 {
-                    c = json[next];
                     ++next;
                     ++column;
+                    c = json[next];
 
                     if (c == '-' || c == '+')
                     {
-                        c = json[next];
                         ++next;
                         ++column;
+                        c = json[next];
                     }
 
                     if (c < '0' || c > '9')
@@ -515,7 +511,6 @@ static ParseResult validate(const char* json)
                         return ParseResult::error("Invalid number in exponent", line, column);
                     }
 
-                    c = json[next];
                     while (c >= '0' && c <= '9' && next < Utility::MAX_SIZE)
                     {
                         ++next;
