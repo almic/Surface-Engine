@@ -54,13 +54,14 @@ template <typename type> struct stack
 
     bool empty() const;
 
-    type pop();
+    // If the stack is empty, will make a copy of `dfault` and return it
+    type pop(const type& dfault);
     size_t push(type&& value);
 
     size_t size() const;
 
-    type& top();
-    const type& top() const;
+    type& top(type& dfault);
+    const type& top(const type& dfault) const;
 
   private:
     type* m_elements;
@@ -80,7 +81,7 @@ struct string_builder
     void append(const char* string);
 
     // For adding multi-byte codepoints
-    void append(unsigned int codepoint);
+    void append(uint32_t codepoint);
 
     StringResult build();
 

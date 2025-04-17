@@ -9,6 +9,11 @@
 namespace Surface::JSON
 {
 
+static Value fake_value = nullptr;
+static Value fake_key = "null";
+static Value fake_array = json::array();
+static Value fake_object = json::object();
+
 // Internal validation method
 static ParseResult validate(const char* json);
 
@@ -58,10 +63,207 @@ enum State : unsigned char
     END,
 };
 
+// Parse a number to a value
+static Value parse_number(const char* json, size_t& next);
+
+// Parse a string to a value
+static Value parse_string(const char* json, size_t& next);
+
 Value parse_no_validate(const char* json)
 {
-    // TODO
-    return Value();
+    using Type = Value::Type;
+    Utility::stack<Value> stack;
+    State state = VALUE;
+    size_t next = 0;
+
+    // Skip UTF-8 Byte Order Mark
+    if (json[0] == 0xEF && json[1] == 0xBB && json[2] == 0xBF)
+    {
+        next = 3;
+    }
+
+// Common code for adding a value to the stack
+#define PUSH_STACK(value_expr)                                                                     \
+    Value v = value_expr;                                                                          \
+    Value& top = stack.top(fake_value);                                                            \
+    switch (top.get_type())                                                                        \
+    {                                                                                              \
+    case Type::Array:                                                                              \
+    {                                                                                              \
+        top.as_array(fake_array.to_array()).append(std::move(v));                                  \
+        state = ARRAY_END;                                                                         \
+        break;                                                                                     \
+    }                                                                                              \
+    case Type::String:                                                                             \
+    {                                                                                              \
+        Value key = stack.pop(fake_key);                                                           \
+        stack.top(fake_object)[key.to_string()] = std::move(v);                                    \
+        state = OBJECT_END;                                                                        \
+        break;                                                                                     \
+    }                                                                                              \
+    default:                                                                                       \
+    {                                                                                              \
+        return v;                                                                                  \
+    }                                                                                              \
+    }                                                                                              \
+    0
+
+    char c;
+
+    do
+    {
+        c = json[next];
+        ++next;
+
+        switch (state)
+        {
+        case ARRAY_START:
+        {
+            if (c == ']')
+            {
+                PUSH_STACK(stack.pop(fake_array));
+                break;
+            }
+
+            [[fallthrough]];
+        }
+        case VALUE:
+        case ARRAY_VALUE:
+        case OBJECT_VALUE:
+        {
+            switch (c)
+            {
+            case '[':
+            {
+                state = ARRAY_START;
+                stack.push(json::array());
+                break;
+            }
+            case '{':
+            {
+                state = OBJECT_START;
+                stack.push(json::object());
+                break;
+            }
+            case 't':
+            {
+                PUSH_STACK(true);
+                next += 3;
+                break;
+            }
+            case 'f':
+            {
+                PUSH_STACK(false);
+                next += 4;
+                break;
+            }
+            case 'n':
+            {
+                PUSH_STACK(nullptr);
+                next += 3;
+                break;
+            }
+            case '"':
+            {
+                PUSH_STACK(parse_string(json, next));
+                break;
+            }
+            case '-':
+            case '0':
+            case '1':
+            case '2':
+            case '3':
+            case '4':
+            case '5':
+            case '6':
+            case '7':
+            case '8':
+            case '9':
+            {
+                PUSH_STACK(parse_number(json, next));
+                break;
+            }
+            }
+
+            break;
+        }
+        case ARRAY_END:
+        {
+            switch (c)
+            {
+            case ']':
+            {
+                PUSH_STACK(stack.pop(fake_array));
+                break;
+            }
+            case ',':
+            {
+                state = ARRAY_VALUE;
+                break;
+            }
+            }
+
+            break;
+        }
+        case OBJECT_START:
+        {
+            if (c == '}')
+            {
+                PUSH_STACK(stack.pop(fake_object));
+                break;
+            }
+
+            [[fallthrough]];
+        }
+        case OBJECT_KEY:
+        {
+            if (c == '"')
+            {
+                stack.push(parse_string(json, next));
+                state = OBJECT_COLON;
+            }
+
+            break;
+        }
+        case OBJECT_COLON:
+        {
+            if (c == ':')
+            {
+                state = OBJECT_VALUE;
+            }
+
+            break;
+        }
+        case OBJECT_END:
+        {
+            switch (c)
+            {
+            case '}':
+            {
+                PUSH_STACK(stack.pop(fake_object));
+                break;
+            }
+            case ',':
+            {
+                state = OBJECT_KEY;
+                break;
+            }
+            }
+
+            break;
+        }
+        default:
+        {
+            // This will terminate the loop
+            next = Utility::MAX_SIZE;
+            break;
+        }
+        }
+    }
+
+    while (next < Utility::MAX_SIZE);
+
+    return stack.pop(fake_value);
 }
 
 bool is_valid(const char* json)
@@ -288,8 +490,8 @@ static ParseResult validate(const char* json)
 
 // Common code when ending an array/ object
 #define POP_STACK                                                                                  \
-    stack.pop();                                                                                   \
-    switch (stack.top())                                                                           \
+    stack.pop(Type::Null);                                                                         \
+    switch (stack.top(Type::Null))                                                                 \
     {                                                                                              \
     case Type::Null:                                                                               \
     {                                                                                              \
@@ -752,6 +954,318 @@ static bool validate_string(const char* json, size_t& next, const size_t& line, 
     return true;
 }
 
+static Value parse_string(const char* json, size_t& next)
+{
+    Utility::string_builder result;
+
+    char c;
+    do
+    {
+        c = json[next];
+        ++next;
+
+        switch (c)
+        {
+        case '"':
+        {
+            return result.build().to_value();
+        }
+        case '\\':
+        {
+            c = json[next];
+            ++next;
+
+            switch (c)
+            {
+            case '\\':
+            case '/':
+            case '"':
+            {
+                result.append(c);
+                break;
+            }
+            case 'b':
+            {
+                result.append('\b');
+                break;
+            }
+            case 'f':
+            {
+                result.append('\f');
+                break;
+            }
+            case 'n':
+            {
+                result.append('\n');
+                break;
+            }
+            case 'r':
+            {
+                result.append('\r');
+                break;
+            }
+            case 't':
+            {
+                result.append('\t');
+                break;
+            }
+            case 'u':
+            {
+                uint16_t unicode = 0;
+                if (!Utility::parse_4hex(json + next, unicode))
+                {
+                    break;
+                }
+
+                next += 4;
+                if (unicode >= 0xD800 && unicode <= 0xDBFF)
+                {
+                    if (json[next] != '\\' || json[next + 1] != 'u')
+                    {
+                        break;
+                    }
+
+                    next += 2;
+
+                    uint16_t surrogate = 0;
+                    if (!Utility::parse_4hex(json + next, surrogate))
+                    {
+                        break;
+                    }
+
+                    next += 4;
+
+                    result.append((uint32_t) 0x10000 + ((unicode & 0x3FF) << 10) +
+                                  (surrogate & 0x3FF));
+                }
+                else
+                {
+                    result.append((uint32_t) unicode);
+                }
+
+                break;
+            }
+            }
+
+            break;
+        }
+        default:
+        {
+            if (static_cast<unsigned char>(c) >= 0x20)
+            {
+                result.append(c);
+            }
+            break;
+        }
+        }
+    }
+
+    while (next < Utility::MAX_SIZE);
+
+    // got some RAM?
+    return result.build().to_value();
+}
+
+static Value parse_number(const char* json, size_t& next)
+{
+    // `next` is pointing 1 past the first digit
+    char c = json[next - 1];
+
+    // For tracking meaningful digits in each part
+    static constexpr int MAX_DIGITS = std::numeric_limits<double>::max_digits10;
+    static constexpr int MAX_EXPONENT = std::numeric_limits<double>::max_exponent10;
+    static constexpr int MAX_EXPONENT_NEG = -std::numeric_limits<double>::min_exponent10;
+    int digits;
+
+    // Scaling value
+    double scale;
+
+    // Parsing value
+    uint64_t part;
+
+    // Result
+    double result = 0.0;
+
+    // Negative sign
+    bool negative = false;
+
+    if (c == '-')
+    {
+        negative = true;
+        c = json[next];
+        ++next;
+    }
+
+    if (c == '0')
+    {
+        c = json[next];
+    }
+    else if (c >= '1' && c <= '9')
+    {
+        digits = 1;
+        scale = 1.0;
+        part = (uint64_t) (c - '0');
+
+        c = json[next];
+
+        while (c >= '0' && c <= '9' && next < Utility::MAX_SIZE)
+        {
+            ++digits;
+
+            if (digits <= MAX_DIGITS)
+            {
+                part *= 10;
+                part += (uint64_t) (c - '0');
+            }
+            else
+            {
+                // Track additional scale, but ignore the digits
+                scale *= 10.0;
+            }
+
+            ++next;
+            c = json[next];
+        }
+
+        if (digits < MAX_DIGITS)
+        {
+            result = part;
+        }
+        else
+        {
+            result = static_cast<double>(part) * scale;
+        }
+    }
+
+    if (c == '.')
+    {
+        ++next;
+        c = json[next];
+
+        // Faster loop when result is already infinite
+        if (std::isinf(result))
+        {
+            while (c >= '0' && c <= '9' && next < Utility::MAX_SIZE)
+            {
+                ++next;
+                c = json[next];
+            }
+        }
+        else if (c >= '0' && c <= '9')
+        {
+
+            digits = 1;
+            scale = 10.0;
+            part = (uint64_t) (c - '0');
+
+            ++next;
+            c = json[next];
+
+            while (c >= '0' && c <= '9' && next < Utility::MAX_SIZE)
+            {
+                ++digits;
+
+                if (digits <= MAX_DIGITS)
+                {
+                    part *= 10;
+                    part += (uint64_t) (c - '0');
+                    scale *= 10.0;
+                }
+
+                // Additional digits will be ignored as they are too small to contribute anything
+
+                ++next;
+                c = json[next];
+            }
+
+            result += static_cast<double>(part) / scale;
+        }
+    }
+
+    if (c == 'e' || c == 'E')
+    {
+        ++next;
+        c = json[next];
+
+        bool exp_negative = false;
+        if (c == '-')
+        {
+            exp_negative = true;
+            ++next;
+            c = json[next];
+        }
+        else if (c == '+')
+        {
+            ++next;
+            c = json[next];
+        }
+
+        // Faster loop when result is already infinite
+        if (std::isinf(result))
+        {
+            while (c >= '0' && c <= '9' && next < Utility::MAX_SIZE)
+            {
+                ++next;
+                c = json[next];
+            }
+        }
+        else if (c >= '0' && c <= '9')
+        {
+            part = (uint64_t) (c - '0');
+
+            ++next;
+            c = json[next];
+
+            while (c >= '0' && c <= '9' && next < Utility::MAX_SIZE)
+            {
+                if (part <= MAX_EXPONENT && (!exp_negative || part <= MAX_EXPONENT_NEG))
+                {
+                    part *= 10;
+                    part += (uint64_t) (c - '0');
+                }
+
+                // Additional digits will be ignored, value will be clipped to the nearest double
+                // (zero or infinity)
+
+                ++next;
+                c = json[next];
+            }
+
+            if (!std::isinf(result))
+            {
+                double exp = std::pow(10.0, part);
+                if (exp_negative)
+                {
+                    result /= exp;
+                }
+                else
+                {
+                    result *= exp;
+                }
+            }
+        }
+    }
+
+    // Round infinity to max/ lowest
+    if (std::isinf(result))
+    {
+        if (negative)
+        {
+            result = std::numeric_limits<double>::lowest();
+        }
+        else
+        {
+            result = std::numeric_limits<double>::max();
+        }
+    }
+    else if (negative)
+    {
+        result = -result;
+    }
+
+    return Value(result);
+}
+
 namespace Utility
 {
 
@@ -873,11 +1387,11 @@ template <typename type> bool stack<type>::empty() const
     return m_size == 0;
 }
 
-template <typename type> type stack<type>::pop()
+template <typename type> type stack<type>::pop(const type& dfault)
 {
     if (!(m_size > 0))
     {
-        return type();
+        return type(dfault);
     }
 
     --m_size;
@@ -902,23 +1416,21 @@ template <typename type> size_t stack<type>::size() const
     return m_size;
 }
 
-template <typename type> type& stack<type>::top()
+template <typename type> type& stack<type>::top(type& dfault)
 {
     if (!(m_size > 0))
     {
-        type fake{};
-        return fake;
+        return dfault;
     }
 
     return m_elements[m_size - 1];
 }
 
-template <typename type> const type& stack<type>::top() const
+template <typename type> const type& stack<type>::top(const type& dfault) const
 {
     if (!(m_size > 0))
     {
-        type fake{};
-        return fake;
+        return dfault;
     }
 
     return m_elements[m_size - 1];
@@ -967,7 +1479,7 @@ void string_builder::append(const char* string)
     }
 }
 
-void string_builder::append(unsigned int codepoint)
+void string_builder::append(uint32_t codepoint)
 {
     if (codepoint < 0x80)
     {
