@@ -127,9 +127,12 @@ struct Value
     Value(unsigned long int number) : Value((double) number) {};
     Value(unsigned long long int number) : Value((double) number) {};
 
+  public: // Static methods
     static Value array(size_t capacity = 0);
 
     static Value object(size_t capacity = 0);
+
+    static ParseResult parse(const char* json);
 
     static StringResult to_string(const Value& value);
 

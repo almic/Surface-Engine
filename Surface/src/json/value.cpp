@@ -105,6 +105,11 @@ Value Value::object(size_t capacity)
     return Value(Object, cast_ptr(object));
 }
 
+ParseResult Value::parse(const char* json)
+{
+    return JSON::parse(json);
+}
+
 StringResult Value::to_string(const Value& value)
 {
     return JSON::to_string(value);
