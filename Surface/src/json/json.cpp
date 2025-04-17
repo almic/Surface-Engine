@@ -655,6 +655,7 @@ static ParseResult validate(const char* json)
 static bool validate_string(const char* json, size_t& next, const size_t& line, size_t& column,
                             ParseResult& error)
 {
+    bool done = false;
     char c;
     do
     {
@@ -666,6 +667,7 @@ static bool validate_string(const char* json, size_t& next, const size_t& line, 
         {
         case '"':
         {
+            done = true;
             break;
         }
         case '\\':
@@ -736,7 +738,7 @@ static bool validate_string(const char* json, size_t& next, const size_t& line, 
         }
         default:
         {
-            if (c < 0x20)
+            if (static_cast<unsigned char>(c) < 0x20)
             {
                 error = ParseResult::error(
                     "Invalid character in string, control codes must be escaped", line, column);
@@ -745,7 +747,7 @@ static bool validate_string(const char* json, size_t& next, const size_t& line, 
         }
         }
     }
-    while (next < Utility::MAX_SIZE && c != '"');
+    while (next < Utility::MAX_SIZE && !done);
 
     return true;
 }
