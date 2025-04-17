@@ -281,7 +281,7 @@ void Object::clear()
 
     for (size_t index = 0; index < m_buckets; ++index)
     {
-        TableEntry entry = m_entries[index];
+        TableEntry& entry = m_entries[index];
         entry.~TableEntry();
     }
 
