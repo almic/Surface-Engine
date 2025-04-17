@@ -83,9 +83,12 @@ class SandboxApp : public Surface::App
 
 int main()
 {
-    SandboxApp app;
+    int result;
 
-    int result = app.run();
+    {
+        SandboxApp app;
+        result = app.run();
+    }
 
     return result;
 }
