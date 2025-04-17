@@ -1098,6 +1098,16 @@ const char* ParseResult::what() const
     return m_message ? m_message : "No exception";
 }
 
+size_t ParseResult::line() const
+{
+    return m_line;
+}
+
+size_t ParseResult::column() const
+{
+    return m_column;
+}
+
 Value&& ParseResult::get()
 {
     return std::move(m_value);
@@ -1123,6 +1133,13 @@ char* StringResult::take_ownership()
     char* temp = m_str;
     m_str = nullptr;
     return temp;
+}
+
+Value StringResult::to_value()
+{
+    char* temp = m_str;
+    m_str = nullptr;
+    return Value(Value::Type::String, *((uint64_t*) &temp));
 }
 
 } // namespace Surface::JSON

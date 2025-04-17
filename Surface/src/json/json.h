@@ -215,6 +215,9 @@ struct Value
   private: // Members
     Type type;
     uint64_t value;
+
+  private:
+    friend StringResult; // To convert strings to values without copying
 };
 
 struct Array
@@ -474,6 +477,8 @@ struct ParseResult
     ParseResult& operator=(ParseResult&& other) noexcept;
 
     const char* what() const;
+    size_t line() const;
+    size_t column() const;
 
     Value&& get();
 
@@ -484,7 +489,7 @@ struct ParseResult
 
     void move_other(ParseResult&& other);
 
-    Value m_value;
+    Value m_value = nullptr;
     char* m_message = nullptr;
     size_t m_line = 0, m_column = 0;
 };
@@ -499,6 +504,8 @@ struct StringResult
     const char* string() const;
 
     char* take_ownership();
+
+    Value to_value();
 
   private:
     StringResult(char* string) : m_str(string) {};
