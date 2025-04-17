@@ -164,6 +164,7 @@ struct ConsoleHandle
 
         // write temp to buffer
         memcpy(buff + count, temp, BUFFER_SIZE - count);
+        delete[] temp;
 
         // update buffer size
         if (size + count > BUFFER_SIZE)
