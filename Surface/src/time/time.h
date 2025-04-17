@@ -175,7 +175,7 @@ struct Timer
             }
         }
 
-        text[++idx] = unit[0];
+        text[idx] = unit[0];
         text[++idx] = unit[1];
 
         write(text);
