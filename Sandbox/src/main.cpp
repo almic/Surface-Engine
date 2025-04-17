@@ -15,15 +15,18 @@ class SandboxApp : public Surface::App
     Surface::Window* mini_console = nullptr;
     Surface::Console* console = nullptr;
 
+    std::function<void(const char*)> log;
+
     void setup() override
     {
         Surface::Time::Timer timer;
         main_window = Surface::Window::create("main", {.title = "Hello World"});
         // mini_console = Surface::Window::get_console_window();
-        console = Surface::Console::create("Sanbox Console", false);
+        console = Surface::Console::create("Sandbox Console", false);
+        log = std::bind(&Surface::Console::writeln, console, std::placeholders::_1);
 
-        console->writeln("Setting up the application");
-        timer.log_to(std::bind(&Surface::Console::writeln, console, std::placeholders::_1));
+        log("Setting up the application");
+        timer.log_to(log);
     }
 
     void update() override
@@ -38,7 +41,7 @@ class SandboxApp : public Surface::App
 
         if (main_window->closed || main_window->quitting)
         {
-            console->writeln("Main window closed, stopping.");
+            log("Main window closed, stopping.");
 
             stop(true);
         }
@@ -55,7 +58,7 @@ class SandboxApp : public Surface::App
         {
             if (console->is_open())
             {
-                console->writeln("Closing console connection.");
+                log("Closing console connection.");
                 console->end();
 
                 // wait for a little while until the buffer is empty
