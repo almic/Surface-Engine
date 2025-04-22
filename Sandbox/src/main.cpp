@@ -1,5 +1,6 @@
 #include "app/app.h"
 #include "console/console.h"
+#include "file/file.h"
 #include "time/time.h"
 #include "window/window.h"
 
@@ -17,15 +18,27 @@ class SandboxApp : public Surface::App
 
     std::function<void(const char*)> log;
 
-    void setup() override
+    void create_windows()
     {
-        Surface::Time::Timer timer;
         main_window = Surface::Window::create("main", {.title = "Hello World"});
         // mini_console = Surface::Window::get_console_window();
         console = Surface::Console::create("Sandbox Console", false);
+    }
+
+    void setup() override
+    {
+        Surface::Time::Timer timer;
+        create_windows();
+
         log = std::bind(&Surface::Console::writeln, console, std::placeholders::_1);
 
         log("Setting up the application");
+
+        auto app_data = Surface::FS::user_app_data_path();
+
+        log("User app data path:");
+        log(app_data.string().c_str());
+
         timer.log_to(log);
     }
 
