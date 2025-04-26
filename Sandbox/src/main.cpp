@@ -34,9 +34,12 @@ class SandboxApp : public Surface::App
 
         log("Setting up the application");
 
-        auto app_data = Surface::FS::user_app_data_path();
+        auto user_data = Surface::FS::user_app_data_path();
+        auto app_data = Surface::FS::sys_app_data_path();
 
-        log("User app data path:");
+        log("User data path:");
+        log(user_data.string().c_str());
+        log("App data path:");
         log(app_data.string().c_str());
 
         timer.log_to(log);

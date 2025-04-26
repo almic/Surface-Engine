@@ -5,6 +5,8 @@
 namespace Surface::JSON
 {
 
+static Value fake_value = nullptr;
+
 static uint64_t cast_ptr(void* ptr)
 {
     return *((uint64_t*) &ptr);
@@ -155,8 +157,7 @@ const Value& Value::operator[](size_t index) const
 {
     if (type != Array)
     {
-        Value fake;
-        return fake;
+        return fake_value;
     }
 
     return to_array()[index];
@@ -176,8 +177,7 @@ const Value& Value::operator[](const char* key) const
 {
     if (type != Object)
     {
-        Value fake;
-        return fake;
+        return fake_value;
     }
 
     return to_object()[(const Object::Key) key];

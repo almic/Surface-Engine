@@ -1129,7 +1129,7 @@ static Value parse_number(const char* json, size_t& next)
 
         if (digits < MAX_DIGITS)
         {
-            result = part;
+            result = static_cast<double>(part);
         }
         else
         {

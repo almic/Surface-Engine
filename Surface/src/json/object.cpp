@@ -7,6 +7,8 @@
 namespace Surface::JSON
 {
 
+static Value fake_value = nullptr;
+
 // Bucket constants
 inline constexpr size_t MIN_BUCKETS = 8;
 inline constexpr uint8_t BUCKET_SIZE = 2;
@@ -242,8 +244,7 @@ const Value& Object::operator[](const Key key) const
     }
 
     // TODO: assert debug break
-    Value fake;
-    return fake;
+    return fake_value;
 }
 
 Object& Object::operator=(const Object& other)
@@ -365,8 +366,7 @@ Value& Object::get_or_put(const Key key)
     if (key == nullptr)
     {
         // TODO: assert debug break
-        Value fake;
-        return fake;
+        return fake_value;
     }
 
     if (m_entries == nullptr)

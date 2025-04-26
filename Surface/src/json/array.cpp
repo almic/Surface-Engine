@@ -7,6 +7,8 @@
 namespace Surface::JSON
 {
 
+static Value fake_value = nullptr;
+
 void Array::copy_other(const Array& other)
 {
     resize(other.m_capacity);
@@ -126,8 +128,7 @@ Value& Array::get(size_t index)
     if (!(index < m_size))
     {
         // TODO: assert debug break
-        Value fake;
-        return fake;
+        return fake_value;
     }
 
     return m_entries[index];
@@ -138,8 +139,7 @@ const Value& Array::get(size_t index) const
     if (!(index < m_size))
     {
         // TODO: assert debug break
-        Value fake;
-        return fake;
+        return fake_value;
     }
 
     return m_entries[index];
