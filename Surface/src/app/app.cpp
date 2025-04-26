@@ -59,6 +59,8 @@ void App::main()
 
         long long new_time = Time::get_nanos();
         unsigned long long d = new_time - current_time;
+        current_time = new_time;
+
         if (max_delta_nano > 0 && d > max_delta_nano)
         {
             delta_nano = max_delta_nano;
