@@ -22,7 +22,9 @@ static void GetHardwareAdapter(Factory* factory, Adapter** adapter_ptr, bool hig
 {
 
     *adapter_ptr = nullptr;
+    SIZE_T memory = 0;
     ptr<Adapter> adapter;
+    ptr<Adapter> best;
     for (UINT index = 0; SUCCEEDED(factory->EnumAdapterByGpuPreference(
              index,
              high_performance ? DXGI_GPU_PREFERENCE_HIGH_PERFORMANCE
@@ -43,14 +45,15 @@ static void GetHardwareAdapter(Factory* factory, Adapter** adapter_ptr, bool hig
         }
 
         if (SUCCEEDED(
-                D3D12CreateDevice(adapter.Get(), FEATURE_LEVEL, __uuidof(ID3D12Device), nullptr)))
+                D3D12CreateDevice(adapter.Get(), FEATURE_LEVEL, __uuidof(ID3D12Device), nullptr)) &&
+            desc.DedicatedVideoMemory > memory)
         {
-            // TODO: favor the device with the most dedicated memory
-            break;
+            adapter.As(&best);
+            memory = desc.DedicatedVideoMemory;
         }
     }
 
-    if (adapter.Get() == nullptr)
+    if (best.Get() == nullptr)
     {
         // Fallback to first supported adapter
         ptr<IDXGIAdapter1> adapter1;
@@ -69,16 +72,16 @@ static void GetHardwareAdapter(Factory* factory, Adapter** adapter_ptr, bool hig
             }
 
             if (SUCCEEDED(D3D12CreateDevice(adapter1.Get(), FEATURE_LEVEL, __uuidof(ID3D12Device),
-                                            nullptr)))
+                                            nullptr)) &&
+                desc.DedicatedVideoMemory > memory)
             {
-                // TODO: favor the device with the most dedicated memory
-                adapter1.As(&adapter);
-                break;
+                adapter1.As(&best);
+                memory = desc.DedicatedVideoMemory;
             }
         }
     }
 
-    *adapter_ptr = adapter.Detach();
+    *adapter_ptr = best.Detach();
 }
 
 namespace Barrier
