@@ -31,6 +31,15 @@ project "Surface"
             "PLATFORM_WINDOWS"
         }
 
+    -- linked libraries
+    links
+    {
+        -- DirectX 12
+        "d3d12",
+        "dxgi",
+        "dxguid",
+        "d3dcompiler",
+    }
 
     -- build configurations
 

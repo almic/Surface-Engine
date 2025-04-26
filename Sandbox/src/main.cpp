@@ -1,6 +1,8 @@
 #include "app/app.h"
 #include "console/console.h"
 #include "file/file.h"
+#include "graphics/directx12.h"
+#include "graphics/graphics.h"
 #include "time/time.h"
 #include "window/window.h"
 
@@ -15,6 +17,7 @@ class SandboxApp : public Surface::App
     Surface::Window* main_window = nullptr;
     Surface::Window* mini_console = nullptr;
     Surface::Console* console = nullptr;
+    Surface::Graphics::RenderEngine* render_engine = nullptr;
 
     std::function<void(const char*)> log;
 
@@ -42,6 +45,25 @@ class SandboxApp : public Surface::App
         log("App data path:");
         log(app_data.string().c_str());
 
+        render_engine = Surface::Graphics::RenderEngine::create(Surface::Graphics::DirectX12);
+        if (!*render_engine)
+        {
+            log("Render Engine encountered an error!");
+            log(render_engine->get_last_error().get_message());
+        }
+        else
+        {
+            if (render_engine->bind_window(main_window->get_native_handle()))
+            {
+                log("Render Engine bound to main window!");
+            }
+            else
+            {
+                log("Render Engine failed to bind to window!");
+                log(render_engine->get_last_error().get_message());
+            }
+        }
+
         timer.log_to(log);
     }
 
@@ -55,6 +77,11 @@ class SandboxApp : public Surface::App
 
         main_window->update();
 
+        if (render_engine && *render_engine)
+        {
+            render_engine->render();
+        }
+
         if (main_window->closed || main_window->quitting)
         {
             log("Main window closed, stopping.");
@@ -65,6 +92,17 @@ class SandboxApp : public Surface::App
 
     void teardown() override
     {
+        if (render_engine)
+        {
+            delete render_engine;
+
+#ifdef PLATFORM_WINDOWS
+#ifdef DEBUG
+            Surface::Graphics::DX12RenderEngine::debug_report_objects();
+#endif
+#endif
+        }
+
         if (main_window)
         {
             delete main_window;
