@@ -42,11 +42,15 @@ struct DX12RenderEngine : public RenderEngine
     using Resource = ID3D12Resource1;
 
   public: // Overrides
+    ~DX12RenderEngine() override;
+
     bool bind_window(void* native_window_handle) override;
     bool render() override;
     void clear_commands() override;
     void initialize() override;
     const Error& get_last_error() const override;
+    void set_clear_color(const float (&color)[4]) override;
+    const char* get_device_name() const override;
 
   public: // Methods
     inline ID3D12Debug* get_debug() const
@@ -61,7 +65,7 @@ struct DX12RenderEngine : public RenderEngine
   public: // static methods
     static void debug_report_objects();
 
-  public: // members
+  private:
     // 2 buffers in the swap chain
     static inline constexpr UINT BUFFER_COUNT = 2;
 
@@ -121,6 +125,9 @@ struct DX12RenderEngine : public RenderEngine
     std::unordered_map<HWND, RenderTarget> m_window_targets;
 
     RenderTarget* m_target;
+
+    float m_clear_color[4] = {0.0f, 0.0f, 0.0f, 0.0f};
+    char* m_device_name = nullptr;
 
     // Dev stuff
     ptr<ID3D12Resource> m_vertex_buffer;

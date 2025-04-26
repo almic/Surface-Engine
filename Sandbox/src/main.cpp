@@ -6,20 +6,12 @@
 #include "time/time.h"
 #include "window/window.h"
 
+#include "json/json.h"
 #include <functional>
 #include <iostream>
 #include <thread>
 
-// string convert
-#include <codecvt>
-
 #undef NULL
-
-static std::string to_string(const std::wstring& wide_string)
-{
-    static std::wstring_convert<std::codecvt_utf8<wchar_t>, wchar_t> converter;
-    return converter.to_bytes(wide_string);
-}
 
 class SandboxApp : public Surface::App
 {
@@ -29,6 +21,55 @@ class SandboxApp : public Surface::App
     Surface::Graphics::RenderEngine* render_engine = nullptr;
 
     std::function<void(const char*)> log;
+
+    float clear_color[4] = {1.0f, 0.0f, 0.0f, 1.0f};
+
+    static bool rotate_color(float (&color)[4], double delta)
+    {
+        static double accumulator = 0;
+        static float step = 0.002f;
+
+        accumulator += delta;
+
+        if (accumulator < 0.01)
+        {
+            return false;
+        }
+
+        accumulator -= 0.01;
+
+        // Switch points
+        for (char i = 0; i < 3; ++i)
+        {
+            if (color[i] == 1.0f)
+            {
+                color[i] -= step;
+                color[(i + 1) % 3] = step;
+                return true;
+            }
+        }
+
+        // Flow points
+        for (char i = 0; i < 3; ++i)
+        {
+            char k = (i + 1) % 3;
+            if (color[i] > 0.0f && color[k] > 0.0f)
+            {
+                color[k] += step;
+                color[i] -= step;
+
+                if (color[k] > 1.0f || color[i] < 0.0f)
+                {
+                    color[k] = 1.0f;
+                    color[i] = 0.0f;
+                }
+
+                break;
+            }
+        }
+
+        return true;
+    }
 
     void create_windows()
     {
@@ -65,20 +106,24 @@ class SandboxApp : public Surface::App
             if (render_engine->bind_window(main_window->get_native_handle()))
             {
                 log("Render Engine bound to main window!");
+                auto device_name = render_engine->get_device_name();
 
-                auto engine = (Surface::Graphics::DX12RenderEngine*) render_engine;
-                auto& adapter = engine->m_adapter;
-
-                DXGI_ADAPTER_DESC3 desc;
-                adapter->GetDesc3(&desc);
-
-                log(to_string(desc.Description).c_str());
+                if (!device_name)
+                {
+                    log("Unknown device");
+                }
+                else
+                {
+                    log(device_name);
+                }
             }
             else
             {
                 log("Render Engine failed to bind to window!");
                 log(render_engine->get_last_error().get_message());
             }
+
+            render_engine->set_clear_color(clear_color);
         }
 
         timer.log_to(log);
@@ -86,21 +131,44 @@ class SandboxApp : public Surface::App
 
     void update() override
     {
+        static uint64_t frames = 0;
+        static double fps_accum = 0.0f;
+
+        double delta = get_delta_time();
+
         // Send buffered text
         if (console->is_buffered())
         {
             console->flush();
         }
 
+        fps_accum += delta;
+        if (fps_accum > 1.0)
+        {
+            // Use json string conversion
+            Surface::JSON::json fps = frames / fps_accum;
+            log(Surface::JSON::json::to_string(fps).string());
+
+            fps_accum = 0.0f;
+            frames = 0;
+        }
+
         main_window->update();
 
         if (render_engine && *render_engine)
         {
+            if (rotate_color(clear_color, delta))
+            {
+                render_engine->set_clear_color(clear_color);
+            }
+
             if (!render_engine->render())
             {
                 log(render_engine->get_last_error().get_message());
                 stop(true);
             }
+
+            ++frames;
         }
 
         if (main_window->closed || main_window->quitting)

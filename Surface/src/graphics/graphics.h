@@ -43,6 +43,10 @@ struct RenderEngine
         return last_error;
     }
 
+    virtual void set_clear_color(const float (&color)[4]) = 0;
+
+    virtual const char* get_device_name() const = 0;
+
   public: // Operators
     inline operator bool() const
     {
@@ -80,6 +84,8 @@ struct BlankRenderEngine : public RenderEngine
     bool bind_window(void* native_window_handle) override;
     bool render() override;
     void clear_commands() override;
+    void set_clear_color(const float (&color)[4]) override;
+    const char* get_device_name() const override;
 };
 
 } // namespace Surface::Graphics

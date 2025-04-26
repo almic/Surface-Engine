@@ -114,6 +114,11 @@ DX12RenderEngine::DX12RenderEngine()
     initialize();
 }
 
+DX12RenderEngine::~DX12RenderEngine()
+{
+    delete[] m_device_name;
+}
+
 bool DX12RenderEngine::bind_window(void* native_window_handle)
 {
     if (m_window_targets.contains((HWND) native_window_handle))
@@ -273,14 +278,13 @@ bool DX12RenderEngine::render()
                                                              D3D12_RESOURCE_STATE_RENDER_TARGET);
         m_command_list->ResourceBarrier(1, &barrier);
 
-        float clear_color[] = {0.4f, 0.6f, 0.9f, 1.0f};
         D3D12_CPU_DESCRIPTOR_HANDLE rtv(
             m_target->rtv_heap.heap->GetCPUDescriptorHandleForHeapStart());
 
         // Another single line of code saved with a 350KB library!
         rtv.ptr += static_cast<SIZE_T>(frame_index) * m_target->rtv_heap.offset;
 
-        m_command_list->ClearRenderTargetView(rtv, clear_color, 0, nullptr);
+        m_command_list->ClearRenderTargetView(rtv, m_clear_color, 0, nullptr);
     }
 
     // Present
@@ -379,6 +383,22 @@ void DX12RenderEngine::initialize()
     {
         last_error = Error::create("Failed to get Direct3D 12 device", Error_Init_Failed_Generic);
         return;
+    }
+
+    // Set device name
+    {
+        DXGI_ADAPTER_DESC3 desc;
+        m_adapter->GetDesc3(&desc);
+
+        delete[] m_device_name;
+        int length = WideCharToMultiByte(CP_UTF8, WC_NO_BEST_FIT_CHARS, desc.Description, -1,
+                                         nullptr, 0, 0, 0);
+        m_device_name = new char[length];
+        WideCharToMultiByte(CP_UTF8, WC_NO_BEST_FIT_CHARS, desc.Description, -1, m_device_name,
+                            length, 0, 0);
+
+        // may not be needed
+        m_device_name[length - 1] = '\0';
     }
 
 #ifdef DEBUG
@@ -480,6 +500,19 @@ void DX12RenderEngine::initialize()
 const Error& DX12RenderEngine::get_last_error() const
 {
     return last_error;
+}
+
+void DX12RenderEngine::set_clear_color(const float (&color)[4])
+{
+    for (char i = 0; i < 4; ++i)
+    {
+        m_clear_color[i] = color[i];
+    }
+}
+
+const char* DX12RenderEngine::get_device_name() const
+{
+    return m_device_name;
 }
 
 void DX12RenderEngine::debug_report_objects()

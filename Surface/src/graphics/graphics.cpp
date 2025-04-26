@@ -40,4 +40,13 @@ void BlankRenderEngine::clear_commands()
 {
 }
 
+void BlankRenderEngine::set_clear_color(const float (&color)[4])
+{
+}
+
+const char* BlankRenderEngine::get_device_name() const
+{
+    return "No Device";
+}
+
 } // namespace Surface::Graphics
