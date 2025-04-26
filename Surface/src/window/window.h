@@ -72,6 +72,25 @@ struct WindowOptions
  */
 struct WindowHandle;
 
+#ifdef PLATFORM_WINDOWS
+
+struct WindowHandle
+{
+    // if this handle is to a console window
+    bool is_console = false;
+
+    // window handle
+    void* handle = nullptr;
+};
+
+#else
+
+struct WindowHandle
+{
+};
+
+#endif
+
 class Window
 {
   private:
@@ -96,7 +115,7 @@ class Window
 
   private:
     // Internal
-    Window(const char* name, const char* title, WindowHandle* handle)
+    Window(const char* name, const char* title, WindowHandle handle)
         : name(name), title(title), handle(handle) {};
 
     // Window width
@@ -116,7 +135,7 @@ class Window
     const char* title;
 
     // Window handle pointer, for platform implementations
-    WindowHandle* handle;
+    WindowHandle handle;
 
   public:
     // If the application has been quit via this window and should terminate
@@ -126,9 +145,24 @@ class Window
     bool closed = false;
 
     // Get the window handle
-    WindowHandle* get_handle()
+    inline const WindowHandle& get_handle() const
     {
         return handle;
+    }
+
+    inline WindowHandle& get_handle()
+    {
+        return handle;
+    }
+
+    // Get the native platform window handle, used by few APIs
+    inline void* get_native_handle() const
+    {
+#ifdef PLATFORM_WINDOWS
+        return handle.handle;
+#else
+        return nullptr;
+#endif
     }
 
     // Hide this window, returning true if the window was previously shown
@@ -140,4 +174,5 @@ class Window
     // Update this window
     void update();
 };
+
 } // namespace Surface

@@ -42,28 +42,6 @@ void update_platform_window(Window& window);
 namespace Surface
 {
 
-struct WindowHandle
-{
-    ~WindowHandle();
-
-    // if this handle is the technical owner of the window handle
-    bool owner = false;
-
-    // if this handle is to a console window
-    bool is_console = false;
-
-    // window handle
-    HWND* handle;
-};
-
-WindowHandle::~WindowHandle()
-{
-    if (owner)
-    {
-        delete handle;
-    }
-}
-
 static LRESULT CALLBACK WindowProc(HWND hwnd, UINT msg, WPARAM w_param, LPARAM l_param);
 
 bool create_platform_window(Window& window, const char* name, const WindowOptions& options)
@@ -95,7 +73,7 @@ bool create_platform_window(Window& window, const char* name, const WindowOption
     {
         if (options.parent)
         {
-            parent = *(options.parent->get_handle()->handle);
+            parent = (HWND) (options.parent->get_handle().handle);
         }
 
         if (options.positioned)
@@ -183,9 +161,8 @@ bool create_platform_window(Window& window, const char* name, const WindowOption
     }
 
     // set the window handle!!!
-    // TODO: is this correct? We need to stop handle from being deleted, so I think we just copy to
-    // a new handle
-    window.get_handle()->handle = new HWND(handle);
+    // TODO: is this correct?
+    window.get_handle().handle = handle;
 
     // Show window
     // TODO: this probably doesn't respect minimized/ maximized option
@@ -196,14 +173,14 @@ bool create_platform_window(Window& window, const char* name, const WindowOption
 
 void destroy_platform_window(Window& window)
 {
-    if (window.get_handle()->is_console)
+    if (window.get_handle().is_console)
     {
         // Hiding the console is equivalent to closing it
         window.hide();
         return;
     }
 
-    DestroyWindow(*window.get_handle()->handle);
+    DestroyWindow((HWND) window.get_handle().handle);
     window.closed = true;
 }
 
@@ -221,8 +198,8 @@ bool get_platform_console_window(Window& window)
         }
     }
 
-    // TODO: is this correct? copy handle value to new handle because it will get deleted
-    window.get_handle()->handle = new HWND(handle);
+    // TODO: is this correct?
+    window.get_handle().handle = handle;
 
     // attach stdio
     freopen_s((FILE**) stdout, "CONOUT$", "w", stdout);
@@ -234,7 +211,7 @@ bool get_platform_console_window(Window& window)
 
 Window* get_platform_window(const WindowHandle& window_handle)
 {
-    LONG_PTR ptr = GetWindowLongPtrA(*window_handle.handle, GWLP_USERDATA);
+    LONG_PTR ptr = GetWindowLongPtrA((HWND) window_handle.handle, GWLP_USERDATA);
     if (ptr == 0)
     {
         return nullptr;
@@ -245,7 +222,7 @@ Window* get_platform_window(const WindowHandle& window_handle)
 
 bool hide_platform_window(Window& window)
 {
-    if (window.get_handle()->is_console)
+    if (window.get_handle().is_console)
     {
         if (window.closed)
         {
@@ -257,12 +234,12 @@ bool hide_platform_window(Window& window)
         return true;
     }
 
-    return ShowWindow(*window.get_handle()->handle, SW_HIDE) != 0;
+    return ShowWindow((HWND) window.get_handle().handle, SW_HIDE) != 0;
 }
 
 bool show_platform_window(Window& window)
 {
-    if (window.get_handle()->is_console)
+    if (window.get_handle().is_console)
     {
         if (!window.closed)
         {
@@ -273,19 +250,19 @@ bool show_platform_window(Window& window)
         get_platform_console_window(window);
         return true;
     }
-    return ShowWindow(*window.get_handle()->handle, SW_SHOW) == 0;
+    return ShowWindow((HWND) window.get_handle().handle, SW_SHOW) == 0;
 }
 
 void update_platform_window(Window& window)
 {
-    if (window.get_handle()->is_console)
+    if (window.get_handle().is_console)
     {
         return;
     }
 
     MSG msg;
 
-    while (PeekMessageA(&msg, *window.get_handle()->handle, 0, 0, PM_REMOVE))
+    while (PeekMessageA(&msg, (HWND) window.get_handle().handle, 0, 0, PM_REMOVE))
     {
         TranslateMessage(&msg);
         DispatchMessageA(&msg);
@@ -303,7 +280,7 @@ static LRESULT CALLBACK WindowProc(HWND hwnd, UINT msg, WPARAM w_param, LPARAM l
     }
     else
     {
-        window = get_platform_window({.handle = &hwnd});
+        window = get_platform_window({.handle = hwnd});
         if (window == nullptr)
         {
             return DefWindowProcA(hwnd, msg, w_param, l_param);
@@ -341,9 +318,7 @@ Window* Window::get_console_window()
 {
     if (!console_window)
     {
-        console_window =
-            new Window("console", "console",
-                       new WindowHandle{.owner = true, .is_console = true, .handle = nullptr});
+        console_window = new Window("console", "console", {.is_console = true});
 
         if (!get_platform_console_window(*console_window))
         {
@@ -357,8 +332,7 @@ Window* Window::get_console_window()
 
 Window* Window::create(const char* name, const WindowOptions& options)
 {
-    Window* window =
-        new Window(name, options.title, new WindowHandle{.owner = true, .handle = nullptr});
+    Window* window = new Window(name, options.title, {});
 
     if (create_platform_window(*window, name, options))
     {
@@ -387,7 +361,6 @@ void Window::update()
 Window::~Window()
 {
     destroy_platform_window(*this);
-    delete handle;
 }
 
 } // namespace Surface
