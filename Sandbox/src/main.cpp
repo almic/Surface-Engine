@@ -79,7 +79,11 @@ class SandboxApp : public Surface::App
 
         if (render_engine && *render_engine)
         {
-            render_engine->render();
+            if (!render_engine->render())
+            {
+                log(render_engine->get_last_error().get_message());
+                stop(true);
+            }
         }
 
         if (main_window->closed || main_window->quitting)

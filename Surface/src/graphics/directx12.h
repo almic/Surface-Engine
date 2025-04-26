@@ -34,6 +34,13 @@ struct DX12RenderEngine : public RenderEngine
 
     template <typename T> using ptr = Microsoft::WRL::ComPtr<T>;
 
+    // Latest types
+    using Adapter = IDXGIAdapter4;
+    using Device = ID3D12Device8;
+    using Factory = IDXGIFactory7;
+    using SwapChain = IDXGISwapChain4;
+    using Resource = ID3D12Resource1;
+
   public: // Overrides
     bool bind_window(void* native_window_handle) override;
     bool render() override;
@@ -66,25 +73,39 @@ struct DX12RenderEngine : public RenderEngine
     ptr<ID3D12Debug> m_debug_controller;
 #endif
 
-    ptr<IDXGIFactory7> m_factory;
+    ptr<Factory> m_factory;
     ptr<ID3D12CommandAllocator> m_command_alloc;
     ptr<ID3D12GraphicsCommandList> m_command_list;
     ptr<ID3D12CommandQueue> m_command_queue;
 
-    ptr<ID3D12Device> m_device;
+    ptr<Device> m_device;
     ptr<ID3D12RootSignature> m_root;
     ptr<ID3D12PipelineState> m_state;
 
-    ptr<ID3D12Resource> m_render_targets[BUFFER_COUNT];
-    ptr<ID3D12DescriptorHeap> m_rtv_heap; // Render Target View Heap
-    std::unordered_map<HWND, ptr<IDXGISwapChain4>> m_swap_chains;
+    // Dynamically sized heap
+    struct ResourceHeap
+    {
+        ptr<ID3D12DescriptorHeap> heap;
+        ptr<Resource>* resources;
+        UINT offset;
+        size_t count;
+    };
 
+    // Statically sized heap
+    template <size_t size> struct StaticResourceHeap
+    {
+        static constexpr size_t count = size;
+        ptr<ID3D12DescriptorHeap> heap;
+        ptr<Resource> resources[size];
+        UINT offset = 0;
+    };
+
+    // A render target with its own heap, swap chain, and synchronization
     struct RenderTarget
     {
-        ptr<IDXGISwapChain4> swap_chain;
-        ptr<ID3D12Resource> render_targets[BUFFER_COUNT];
-        ptr<ID3D12DescriptorHeap> rtv_heap;
-        UINT rtv_descriptor_size = 0;
+        ptr<SwapChain> swap_chain;
+
+        StaticResourceHeap<BUFFER_COUNT> rtv_heap;
 
         // Synchronization
         struct Sync
@@ -93,11 +114,13 @@ struct DX12RenderEngine : public RenderEngine
 
             ptr<ID3D12Fence> fence;
             HANDLE fence_event = nullptr;
-            UINT64 fence_value = 0;
+            uint64_t fence_value = 0;
         } sync;
     };
 
     std::unordered_map<HWND, RenderTarget> m_window_targets;
+
+    RenderTarget* m_target;
 
     // Dev stuff
     ptr<ID3D12Resource> m_vertex_buffer;
