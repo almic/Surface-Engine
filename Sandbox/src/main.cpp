@@ -10,7 +10,16 @@
 #include <iostream>
 #include <thread>
 
+// string convert
+#include <codecvt>
+
 #undef NULL
+
+static std::string to_string(const std::wstring& wide_string)
+{
+    static std::wstring_convert<std::codecvt_utf8<wchar_t>, wchar_t> converter;
+    return converter.to_bytes(wide_string);
+}
 
 class SandboxApp : public Surface::App
 {
@@ -56,6 +65,14 @@ class SandboxApp : public Surface::App
             if (render_engine->bind_window(main_window->get_native_handle()))
             {
                 log("Render Engine bound to main window!");
+
+                auto engine = (Surface::Graphics::DX12RenderEngine*) render_engine;
+                auto& adapter = engine->m_adapter;
+
+                DXGI_ADAPTER_DESC3 desc;
+                adapter->GetDesc3(&desc);
+
+                log(to_string(desc.Description).c_str());
             }
             else
             {

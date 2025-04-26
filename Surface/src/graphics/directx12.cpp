@@ -367,15 +367,14 @@ void DX12RenderEngine::initialize()
         return;
     }
 
-    ptr<Adapter> adapter;
-    GetHardwareAdapter(m_factory.Get(), &adapter, true);
-    if (adapter.Get() == nullptr)
+    GetHardwareAdapter(m_factory.Get(), &m_adapter, true);
+    if (m_adapter.Get() == nullptr)
     {
         last_error = Error::create("Failed to get Direct3D 12 adapter", Error_Init_Failed_Generic);
         return;
     }
 
-    result = D3D12CreateDevice(adapter.Get(), FEATURE_LEVEL, IID_PPV_ARGS(&m_device));
+    result = D3D12CreateDevice(m_adapter.Get(), FEATURE_LEVEL, IID_PPV_ARGS(&m_device));
     if (FAILED(result))
     {
         last_error = Error::create("Failed to get Direct3D 12 device", Error_Init_Failed_Generic);

@@ -61,13 +61,12 @@ struct DX12RenderEngine : public RenderEngine
   public: // static methods
     static void debug_report_objects();
 
-  private:
+  public: // members
     // 2 buffers in the swap chain
     static inline constexpr UINT BUFFER_COUNT = 2;
 
     D3D12_VIEWPORT m_viewport;
     D3D12_RECT m_scissor_rect;
-
 
 #ifdef DEBUG
     ptr<ID3D12Debug> m_debug_controller;
@@ -78,6 +77,7 @@ struct DX12RenderEngine : public RenderEngine
     ptr<ID3D12GraphicsCommandList> m_command_list;
     ptr<ID3D12CommandQueue> m_command_queue;
 
+    ptr<Adapter> m_adapter;
     ptr<Device> m_device;
     ptr<ID3D12RootSignature> m_root;
     ptr<ID3D12PipelineState> m_state;
