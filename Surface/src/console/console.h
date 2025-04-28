@@ -104,7 +104,7 @@ class Console
      * @param text text to write
      * @return true if text was written, false if it was buffered or otherwise failed.
      */
-    bool writeln(const char* text)
+    inline bool writeln(const char* text)
     {
         // Be simple
         bool result = write(text);
@@ -126,12 +126,23 @@ class Console
      * @brief Set the title of the console window
      * @param title title to set
      */
-    void set_title(const char* title)
+    inline void set_title(const char* title)
     {
         this->title = title;
         write("set-title:");
         write(this->title);
         write("\n");
+    }
+
+    /**
+     * @brief If there is buffered text, calls the flush() method
+     */
+    inline void update()
+    {
+        if (is_buffered())
+        {
+            flush();
+        }
     }
 };
 } // namespace Surface

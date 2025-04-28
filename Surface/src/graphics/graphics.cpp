@@ -1,6 +1,7 @@
 #include "graphics.h"
 
-#include "directx12.h"
+// Engine implementations
+#include "dx12/directx12.h"
 
 namespace Surface::Graphics
 {

@@ -1,9 +1,9 @@
 #pragma once
 
-#include "graphics.h"
-
 // Things for rendering with DirectX 12, Windows only
 #ifdef PLATFORM_WINDOWS
+
+#include "../graphics.h"
 
 // windows
 #define WIN32_LEAN_AND_MEAN

@@ -3,7 +3,6 @@
 namespace Surface::Graphics
 {
 
-
 enum ERROR_CODE : unsigned long
 {
     // No error

@@ -1,7 +1,7 @@
 #include "app/app.h"
 #include "console/console.h"
 #include "file/file.h"
-#include "graphics/directx12.h"
+#include "graphics/dx12/directx12.h"
 #include "graphics/graphics.h"
 #include "time/time.h"
 #include "window/window.h"
@@ -183,16 +183,39 @@ class SandboxApp : public Surface::App
 
     void update() override
     {
+        console->update();
+        main_window->update();
+
+        if (main_window->closed || main_window->quitting)
+        {
+            log("Main window closed, stopping.");
+
+            stop(true);
+            return;
+        }
+
+        double delta = get_delta_time();
+
+        if (rotate_color(clear_color, delta))
+        {
+            render_engine->set_clear_color(clear_color);
+        }
+    };
+
+    void render() override
+    {
+        if (!render_engine || !*render_engine)
+        {
+            log("Render Engine out-of-order, stopping.");
+
+            stop(true);
+            return;
+        }
+
         static uint64_t frames = 0;
         static double fps_accum = 0.0f;
 
         double delta = get_delta_time();
-
-        // Send buffered text
-        if (console->is_buffered())
-        {
-            console->flush();
-        }
 
         fps_accum += delta;
         if (fps_accum > 1.0)
@@ -205,31 +228,14 @@ class SandboxApp : public Surface::App
             frames = 0;
         }
 
-        main_window->update();
-
-        if (render_engine && *render_engine)
+        if (!render_engine->render())
         {
-            if (rotate_color(clear_color, delta))
-            {
-                render_engine->set_clear_color(clear_color);
-            }
-
-            if (!render_engine->render())
-            {
-                log(render_engine->get_last_error().get_message());
-                stop(true);
-            }
-
-            ++frames;
-        }
-
-        if (main_window->closed || main_window->quitting)
-        {
-            log("Main window closed, stopping.");
-
+            log(render_engine->get_last_error().get_message());
             stop(true);
         }
-    };
+
+        ++frames;
+    }
 
     void teardown() override
     {
