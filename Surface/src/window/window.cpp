@@ -31,13 +31,41 @@ void update_platform_window(Window& window);
 #define WIN32_LEAN_AND_MEAN
 #define NOMINMAX
 
-#include <Windows.h>
+#include <windows.h>
+// ^ Must be first
+
 #include <basetsd.h>
 #include <consoleapi.h>
 #include <consoleapi3.h>
 #include <cstdio>
+#include <dwmapi.h>
 #include <libloaderapi.h>
 #include <windef.h>
+
+static inline POINT to_point(LPARAM l_param)
+{
+    return {(int) (short) ((WORD) (((DWORD_PTR) (l_param)) & 0xffff)),
+            (int) (short) ((WORD) ((((DWORD_PTR) (l_param)) >> 16) & 0xffff))};
+}
+
+static inline LPARAM from_point(POINT point)
+{
+    return (static_cast<LPARAM>(point.y) << 16) | (static_cast<LPARAM>(point.x) & 0xFFFF);
+}
+
+static inline bool is_left_mouse()
+{
+    short stat;
+    if (GetSystemMetrics(SM_SWAPBUTTON))
+    {
+        stat = GetAsyncKeyState(VK_RBUTTON);
+    }
+    else
+    {
+        stat = GetAsyncKeyState(VK_LBUTTON);
+    }
+    return stat & 0x8000; // high bit contains true value
+}
 
 namespace Surface
 {
@@ -102,7 +130,10 @@ bool create_platform_window(Window& window, const char* name, const WindowOption
         // Main styles
         if (options.frame_none)
         {
-            // empty
+            if (options.title_none)
+            {
+                window.no_frame = true;
+            }
         }
         else if (options.frame_thin)
         {
@@ -260,9 +291,96 @@ void update_platform_window(Window& window)
         return;
     }
 
-    MSG msg;
+    // Perform window resizing/ moving first
+    auto& handle = window.get_handle();
+    do
+    {
+        if (!handle.resizing_moving)
+        {
+            break;
+        }
 
-    while (PeekMessageA(&msg, (HWND) window.get_handle().handle, 0, 0, PM_REMOVE))
+        // Performance: skip 9/10 calls, as these functions are expensive
+        // On my system, at the time of this commit, FPS starts at around 4200.
+        // This drops ~7x (to 620FPS) when moving, and ~13x (to 320FPS) when resizing.
+        // With this code, moving drops ~2x (to 1970FPS), and resizing drops ~3x (to 1380FPS).
+        // Doing this gives a clear performance boost.
+
+        ++handle.resize_skip;
+        if (handle.resize_skip < 9)
+        {
+            break;
+        }
+
+        handle.resize_skip = 0;
+
+        // Test if mouse is held, if the user drags quickly or above the window and releases, we
+        // don't get the "BUTTONUP" message
+
+        if (!is_left_mouse())
+        {
+            handle.resizing_moving = 0;
+            break;
+        }
+
+        POINT pos;
+        GetCursorPos(&pos);
+
+        POINT prev = to_point(handle.mouse_pos);
+
+        POINT offset{
+            pos.x - prev.x,
+            pos.y - prev.y,
+        };
+
+        if (offset.x == 0 && offset.y == 0)
+        {
+            break;
+        }
+
+        handle.mouse_pos = from_point(pos);
+
+        // clang-format off
+        enum region : unsigned int { left = 1, right = 2, top = 4, bottom = 8, caption = 16 };
+
+        // clang-format on
+
+        RECT rect;
+        GetWindowRect((HWND) handle.handle, &rect);
+
+        if (handle.resizing_moving & caption)
+        {
+            SetWindowPos((HWND) handle.handle, 0, rect.left + offset.x, rect.top + offset.y, 0, 0,
+                         SWP_NOSIZE | SWP_NOZORDER);
+            break;
+        }
+
+        if (handle.resizing_moving & top)
+        {
+            rect.top += offset.y;
+        }
+        else if (handle.resizing_moving & bottom)
+        {
+            rect.bottom += offset.y;
+        }
+
+        if (handle.resizing_moving & left)
+        {
+            rect.left += offset.x;
+        }
+        else if (handle.resizing_moving & right)
+        {
+            rect.right += offset.x;
+        }
+
+        SetWindowPos((HWND) handle.handle, 0, rect.left, rect.top, rect.right - rect.left,
+                     rect.bottom - rect.top, SWP_NOZORDER);
+        break;
+    }
+    while (false);
+
+    MSG msg;
+    while (PeekMessageA(&msg, (HWND) handle.handle, 0, 0, PM_REMOVE))
     {
         TranslateMessage(&msg);
         DispatchMessageA(&msg);
@@ -287,20 +405,194 @@ static LRESULT CALLBACK WindowProc(HWND hwnd, UINT msg, WPARAM w_param, LPARAM l
         }
     }
 
+    // clang-format off
+    enum region : unsigned int { left = 1, right = 2, top = 4, bottom = 8, caption = 16 };
+
+    // clang-format on
+
     switch (msg)
     {
+    case WM_ACTIVATE:
+    {
+        if (!window->no_frame)
+        {
+            break;
+        }
+
+        MARGINS margins = {0};
+        HRESULT result = DwmExtendFrameIntoClientArea(hwnd, &margins);
+        if (FAILED(result))
+        {
+            // empty
+        }
+
+        break; // Continue to DefWindowProc
+    }
+    case WM_CREATE:
+    {
+        if (!window->no_frame)
+        {
+            break;
+        }
+
+        // Simulate a window resize to force the NCCALCSIZE message
+        SetWindowPos(hwnd, 0, 0, 0, 0, 0, SWP_FRAMECHANGED | SWP_NOMOVE | SWP_NOSIZE);
+        return 0;
+    }
     case WM_CLOSE:
+    {
         destroy_platform_window(*window);
         return 0;
+    }
     case WM_DESTROY:
+    {
         PostQuitMessage(0);
         return 0;
+    }
     case WM_QUIT:
+    {
         window->quitting = true;
         return 0;
-    default:
-        return DefWindowProcA(hwnd, msg, w_param, l_param);
     }
+    case WM_NCCALCSIZE:
+    {
+        if (window->no_frame && w_param == 1)
+        {
+            return 0;
+        }
+        break;
+    }
+    case WM_NCHITTEST:
+    {
+        if (!window->no_frame)
+        {
+            break;
+        }
+
+        // Handle frame hit-test
+        static RECT border{5, 5, 5, 5};
+        POINT pos = to_point(l_param);
+
+        ScreenToClient(hwnd, &pos);
+
+        // Borders first, for resizing
+        RECT rect;
+        GetClientRect(hwnd, &rect);
+
+        // Modified from Cherno's glfw fork, written by Mohit Sethi (GloriousPtr)
+        int hit = 0;
+
+        // clang-format off
+        if (pos.x <= border.left)                      hit |= left;
+        else if (pos.x >= rect.right - border.right)   hit |= right;
+
+        if (pos.y <= border.top)                       hit |= top;
+        else if (pos.y >= rect.bottom - border.bottom) hit |= bottom;
+
+        if (hit & top)
+        {
+            if (hit & left)  return HTTOPLEFT;
+            if (hit & right) return HTTOPRIGHT;
+                             return HTTOP;
+        }
+
+        if (hit & bottom)
+        {
+            if (hit & left)  return HTBOTTOMLEFT;
+            if (hit & right) return HTBOTTOMRIGHT;
+                             return HTBOTTOM;
+        }
+
+        if (hit & left)      return HTLEFT;
+        if (hit & right)     return HTRIGHT;
+        // clang-format on
+
+        // Try user title bar hit test
+        if (window->title_bar_hit_test(pos.x, pos.y))
+        {
+            return HTCAPTION;
+        }
+
+        return HTCLIENT;
+    }
+    case WM_NCLBUTTONDOWN:
+    {
+        // Moving / Resizing on Windows with DefWindowProc uses an infinite loop that polls for
+        // mouse updates until the button is released. This blocks user code which can be very
+        // annoying and even problematic.
+        //
+        // DefWindowProc must do it this way to function without state, but we have state and can
+        // yeild back to user code immediately.
+
+        auto& hit = window->get_handle().resizing_moving;
+        switch (GET_NCHITTEST_WPARAM(w_param))
+        {
+        case HTCAPTION:
+        {
+            hit = caption;
+            break;
+        }
+        case HTLEFT:
+        {
+            hit = left;
+            break;
+        }
+        case HTRIGHT:
+        {
+            hit = right;
+            break;
+        }
+        case HTTOP:
+        {
+            hit = top;
+            break;
+        }
+        case HTTOPLEFT:
+        {
+            hit = top | left;
+            break;
+        }
+        case HTTOPRIGHT:
+        {
+            hit = top | right;
+            break;
+        }
+        case HTBOTTOM:
+        {
+            hit = bottom;
+            break;
+        }
+        case HTBOTTOMLEFT:
+        {
+            hit = bottom | left;
+            break;
+        }
+        case HTBOTTOMRIGHT:
+        {
+            hit = bottom | right;
+            break;
+        }
+        }
+
+        if (hit == 0)
+        {
+            // Let DefWindowProc handle it
+            break;
+        }
+
+        // We will begin moving the window / resizing as needed
+        window->get_handle().mouse_pos = l_param;
+        return 0;
+    }
+    case WM_NCLBUTTONUP:
+    {
+        window->get_handle().resizing_moving = 0;
+        return 0;
+    }
+    }
+
+    LRESULT result = DefWindowProcA(hwnd, msg, w_param, l_param);
+    return result;
 }
 
 } // namespace Surface

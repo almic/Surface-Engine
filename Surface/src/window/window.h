@@ -76,11 +76,16 @@ struct WindowHandle;
 
 struct WindowHandle
 {
+    // window handle
+    void* handle = nullptr;
+
     // if this handle is to a console window
     bool is_console = false;
 
-    // window handle
-    void* handle = nullptr;
+    // For non-blocking resizes/ moves
+    unsigned char resize_skip = 0; // performance use
+    unsigned int resizing_moving;
+    long long mouse_pos;
 };
 
 #else
@@ -97,6 +102,16 @@ class Window
     // The console window of the application
     inline static Window* console_window;
 
+  public: // Typedefs
+    /**
+     * @brief Title bar hit test method, coordinates are in client space, where (0, 0) is the
+     * top-left corner of the window.
+     *
+     * @return true if the title bar is hit and the native window should handle it, such as to
+     * resize or move the window
+     */
+    typedef bool (*TitlebarHitTest)(Window* window, unsigned int x_pos, unsigned int y_pos);
+
   public:
     // Retrieve a created window from its handle
     static Window* get_window(WindowHandle& handle);
@@ -110,6 +125,12 @@ class Window
 
     // Create a window
     static Window* create(const char* name, const WindowOptions& options);
+
+    template <unsigned int height>
+    static bool static_title_bar_test(Window*, unsigned int, unsigned int y_pos)
+    {
+        return !(height < y_pos);
+    }
 
     ~Window();
 
@@ -136,6 +157,9 @@ class Window
 
     // Window handle pointer, for platform implementations
     WindowHandle handle;
+
+    // Hit test method for the title bar
+    TitlebarHitTest m_title_bar_hit_test = nullptr;
 
   public:
     // If the application has been quit via this window and should terminate
@@ -165,6 +189,23 @@ class Window
 #endif
     }
 
+    // If this window uses custom frames
+    bool no_frame = false;
+
+    inline void set_title_bar_hit_test(TitlebarHitTest method)
+    {
+        m_title_bar_hit_test = method;
+    }
+
+    inline bool title_bar_hit_test(unsigned int x_pos, unsigned int y_pos)
+    {
+        if (m_title_bar_hit_test)
+        {
+            return m_title_bar_hit_test(this, x_pos, y_pos);
+        }
+        return false;
+    }
+
     // Hide this window, returning true if the window was previously shown
     bool hide();
 
@@ -173,6 +214,17 @@ class Window
 
     // Update this window
     void update();
+
+  private:
+    // Allow private access from these functions
+    friend bool create_platform_window(Window& window, const char* name,
+                                       const WindowOptions& options);
+    friend void destroy_platform_window(Window& window);
+    friend bool get_platform_console_window(Window& window);
+    friend Window* get_platform_window(const WindowHandle& window_handle);
+    friend bool hide_platform_window(Window& window);
+    friend bool show_platform_window(Window& window);
+    friend void update_platform_window(Window& window);
 };
 
 } // namespace Surface

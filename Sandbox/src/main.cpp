@@ -73,7 +73,18 @@ class SandboxApp : public Surface::App
 
     void create_windows()
     {
-        main_window = Surface::Window::create("main", {.title = "Hello World"});
+        Surface::WindowOptions options{
+            // clang-format off
+            .title = "Hello World",
+            .frame_none = true,
+            .title_none = true,
+            // clang-format on
+        };
+
+        main_window = Surface::Window::create("main", options);
+
+        main_window->set_title_bar_hit_test(Surface::Window::static_title_bar_test<30>);
+
         // mini_console = Surface::Window::get_console_window();
         console = Surface::Console::create("Sandbox Console", false);
     }

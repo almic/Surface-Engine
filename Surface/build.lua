@@ -36,9 +36,10 @@ project "Surface"
     {
         -- DirectX 12
         "d3d12",
+        "d3dcompiler",
+        "dwmapi",
         "dxgi",
         "dxguid",
-        "d3dcompiler",
     }
 
     -- build configurations
