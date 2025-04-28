@@ -133,6 +133,10 @@ bool create_platform_window(Window& window, const char* name, const WindowOption
             if (options.title_none)
             {
                 window.no_frame = true;
+
+                // Enables WIN+ARROW key for window snapping/ maximize/ minimize
+                // TODO: find out how to hack it to enable drag snapping
+                style |= WS_SIZEBOX | WS_MAXIMIZEBOX | WS_MINIMIZEBOX;
             }
         }
         else if (options.frame_thin)
