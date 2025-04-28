@@ -37,6 +37,12 @@ struct WindowOptions
     // When true, hides the window close button
     bool btn_close_none = false;
 
+    // When true, disables maximizing and hides the window maximize button
+    bool max_none = false;
+
+    // When true, disables minimizing and hides the window minimize button
+    bool min_none = false;
+
     // When true, use a thin frame style for the window
     bool frame_thin = false;
 

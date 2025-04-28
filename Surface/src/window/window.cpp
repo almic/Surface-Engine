@@ -148,6 +148,16 @@ bool create_platform_window(Window& window, const char* name, const WindowOption
             style |= WS_CAPTION | WS_SYSMENU; // Must show both
         }
 
+        if (!options.max_none)
+        {
+            style |= WS_MAXIMIZEBOX;
+        }
+
+        if (!options.min_none)
+        {
+            style |= WS_MINIMIZEBOX;
+        }
+
         // Extended styles
         if (options.pinned)
         {
