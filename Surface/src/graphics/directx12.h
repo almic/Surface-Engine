@@ -50,6 +50,7 @@ struct DX12RenderEngine : public RenderEngine
     void initialize() override;
     const Error& get_last_error() const override;
     void set_clear_color(const float (&color)[4]) override;
+    bool resize(unsigned int width, unsigned int height) override;
     const char* get_device_name() const override;
 
   public: // Methods
@@ -65,26 +66,9 @@ struct DX12RenderEngine : public RenderEngine
   public: // static methods
     static void debug_report_objects();
 
-  private:
+  public: // inner stuff
     // 2 buffers in the swap chain
     static inline constexpr UINT BUFFER_COUNT = 2;
-
-    D3D12_VIEWPORT m_viewport;
-    D3D12_RECT m_scissor_rect;
-
-#ifdef DEBUG
-    ptr<ID3D12Debug> m_debug_controller;
-#endif
-
-    ptr<Factory> m_factory;
-    ptr<ID3D12CommandAllocator> m_command_alloc;
-    ptr<ID3D12GraphicsCommandList> m_command_list;
-    ptr<ID3D12CommandQueue> m_command_queue;
-
-    ptr<Adapter> m_adapter;
-    ptr<Device> m_device;
-    ptr<ID3D12RootSignature> m_root;
-    ptr<ID3D12PipelineState> m_state;
 
     // Dynamically sized heap
     struct ResourceHeap
@@ -107,24 +91,52 @@ struct DX12RenderEngine : public RenderEngine
     // A render target with its own heap, swap chain, and synchronization
     struct RenderTarget
     {
+        void* native = nullptr;
+        UINT frame_index = 0;
         ptr<SwapChain> swap_chain;
+        UINT width;
+        UINT height;
 
         StaticResourceHeap<BUFFER_COUNT> rtv_heap;
 
         // Synchronization
         struct Sync
         {
-            UINT frame_index = 0;
-
             ptr<ID3D12Fence> fence;
             HANDLE fence_event = nullptr;
             uint64_t fence_value = 0;
         } sync;
     };
 
+
+  private: // internal methods
+    // Updates the target's fence value, then blocks until it is reached
+    bool flush_target();
+
+    // Blocks until the fence is reached, may return immediately if no synchronization is needed
+    bool block_target();
+
+  private:
+    D3D12_VIEWPORT m_viewport;
+    D3D12_RECT m_scissor_rect;
+
+#ifdef DEBUG
+    ptr<ID3D12Debug> m_debug_controller;
+#endif
+
+    ptr<Factory> m_factory;
+    ptr<ID3D12CommandAllocator> m_command_alloc;
+    ptr<ID3D12GraphicsCommandList> m_command_list;
+    ptr<ID3D12CommandQueue> m_command_queue;
+
+    ptr<Adapter> m_adapter;
+    ptr<Device> m_device;
+    ptr<ID3D12RootSignature> m_root;
+    ptr<ID3D12PipelineState> m_state;
+
     std::unordered_map<HWND, RenderTarget> m_window_targets;
 
-    RenderTarget* m_target;
+    RenderTarget* m_target = nullptr;
 
     float m_clear_color[4] = {0.0f, 0.0f, 0.0f, 0.0f};
     char* m_device_name = nullptr;

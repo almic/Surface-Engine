@@ -36,12 +36,12 @@ bool BlankRenderEngine::render()
     return false;
 }
 
-void BlankRenderEngine::clear_commands()
-{
-}
+void BlankRenderEngine::clear_commands() {};
+void BlankRenderEngine::set_clear_color(const float (&color)[4]) {};
 
-void BlankRenderEngine::set_clear_color(const float (&color)[4])
+bool BlankRenderEngine::resize(unsigned int width, unsigned int height)
 {
+    return false;
 }
 
 const char* BlankRenderEngine::get_device_name() const

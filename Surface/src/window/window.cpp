@@ -1,25 +1,5 @@
 #include "window.h"
 
-// Implement per platform
-namespace Surface
-{
-
-bool create_platform_window(Window& window, const char* name, const WindowOptions& options);
-
-void destroy_platform_window(Window& window);
-
-bool get_platform_console_window(Window& window);
-
-Window* get_platform_window(const WindowHandle& window_handle);
-
-bool hide_platform_window(Window& window);
-
-bool show_platform_window(Window& window);
-
-void update_platform_window(Window& window);
-
-} // namespace Surface
-
 ////////////////////////////////////////////////
 //              Windows Platform              //
 ////////////////////////////////////////////////
@@ -53,7 +33,7 @@ static inline LPARAM from_point(POINT point)
     return (static_cast<LPARAM>(point.y) << 16) | (static_cast<LPARAM>(point.x) & 0xFFFF);
 }
 
-static inline bool is_left_mouse()
+static inline bool is_left_mouse_async()
 {
     short stat;
     if (GetSystemMetrics(SM_SWAPBUTTON))
@@ -176,7 +156,7 @@ bool create_platform_window(Window& window, const char* name, const WindowOption
     }
 
     // clang-format off
-    HWND handle = CreateWindowExA(
+    HWND hwnd = CreateWindowExA(
             exStyle, // extended styles
             name, // window class name registered above
             options.title,
@@ -190,18 +170,32 @@ bool create_platform_window(Window& window, const char* name, const WindowOption
     );
     // clang-format on
 
-    if (handle == 0)
+    if (hwnd == 0)
     {
         return false;
     }
 
-    // set the window handle!!!
-    // TODO: is this correct?
-    window.get_handle().handle = handle;
+    // set the window handle stuff!!!
+    auto& handle = window.get_handle();
+    handle.handle = hwnd;
+    handle.style = style;
 
     // Show window
     // TODO: this probably doesn't respect minimized/ maximized option
-    ShowWindow(handle, SW_SHOW);
+    ShowWindow(hwnd, SW_SHOW);
+
+    RECT rect;
+    GetWindowRect(hwnd, &rect);
+
+    window.x = rect.left;
+    window.y = rect.top;
+    window.width = rect.right - rect.left;
+    window.height = rect.bottom - rect.top;
+    window.last_rect = {window.x, window.y, window.width, window.height};
+
+    // Calling this is pointless because a user does not have a reference to this window yet, so
+    // they could not have set a callback method
+    // window.on_resize();
 
     return true;
 }
@@ -321,7 +315,7 @@ void update_platform_window(Window& window)
         // Test if mouse is held, if the user drags quickly or above the window and releases, we
         // don't get the "BUTTONUP" message
 
-        if (!is_left_mouse())
+        if (!is_left_mouse_async())
         {
             handle.resizing_moving = 0;
             break;
@@ -354,7 +348,10 @@ void update_platform_window(Window& window)
 
         if (handle.resizing_moving & caption)
         {
-            SetWindowPos((HWND) handle.handle, 0, rect.left + offset.x, rect.top + offset.y, 0, 0,
+            window.x = rect.left + offset.x;
+            window.y = rect.top + offset.y;
+
+            SetWindowPos((HWND) handle.handle, 0, window.x, window.y, 0, 0,
                          SWP_NOSIZE | SWP_NOZORDER);
             break;
         }
@@ -377,8 +374,16 @@ void update_platform_window(Window& window)
             rect.right += offset.x;
         }
 
-        SetWindowPos((HWND) handle.handle, 0, rect.left, rect.top, rect.right - rect.left,
-                     rect.bottom - rect.top, SWP_NOZORDER);
+        window.x = rect.left;
+        window.y = rect.top;
+        window.width = rect.right - rect.left;
+        window.height = rect.bottom - rect.top;
+
+        SetWindowPos((HWND) handle.handle, 0, window.x, window.y, window.width, window.height,
+                     SWP_NOZORDER);
+
+        window.on_resize();
+
         break;
     }
     while (false);
@@ -389,6 +394,62 @@ void update_platform_window(Window& window)
         TranslateMessage(&msg);
         DispatchMessageA(&msg);
     }
+}
+
+void set_platform_window_rect(Window& window, const Window::Rect& rect)
+{
+    window.x = rect.x;
+    window.y = rect.y;
+    window.width = rect.width;
+    window.height = rect.height;
+}
+
+bool set_platform_window_fullscreen(Window& window, bool enable)
+{
+    if (enable == window.m_is_fullscreen)
+    {
+        return true;
+    }
+
+    HWND hwnd = (HWND) window.handle.handle;
+    if (enable)
+    {
+        window.last_rect = {window.x, window.y, window.width, window.height};
+        SetWindowLongPtrA(hwnd, GWL_STYLE, 0);
+        HMONITOR monitor = MonitorFromWindow(hwnd, MONITOR_DEFAULTTONEAREST);
+        MONITORINFO info{};
+        info.cbSize = sizeof(MONITORINFO);
+        GetMonitorInfoA(monitor, &info);
+
+
+        window.x = info.rcMonitor.left;
+        window.y = info.rcMonitor.top;
+        window.width = info.rcMonitor.right - info.rcMonitor.left;
+        window.height = info.rcMonitor.bottom - info.rcMonitor.top;
+
+        SetWindowPos(hwnd, HWND_TOP, window.x, window.y, window.width, window.height,
+                     SWP_FRAMECHANGED | SWP_NOACTIVATE);
+        ShowWindow(hwnd, SW_MAXIMIZE);
+
+        window.m_is_fullscreen = true;
+    }
+    else
+    {
+        SetWindowLongPtrA(hwnd, GWL_STYLE, window.handle.style);
+
+        window.x = window.last_rect.x;
+        window.y = window.last_rect.y;
+        window.width = window.last_rect.width;
+        window.height = window.last_rect.height;
+
+        SetWindowPos(hwnd, HWND_TOP, window.x, window.y, window.width, window.height,
+                     SWP_FRAMECHANGED | SWP_NOACTIVATE);
+        ShowWindow(hwnd, SW_NORMAL);
+
+        window.m_is_fullscreen = false;
+    }
+
+    window.on_resize();
 }
 
 static LRESULT CALLBACK WindowProc(HWND hwnd, UINT msg, WPARAM w_param, LPARAM l_param)
@@ -456,6 +517,25 @@ static LRESULT CALLBACK WindowProc(HWND hwnd, UINT msg, WPARAM w_param, LPARAM l
     case WM_QUIT:
     {
         window->quitting = true;
+        return 0;
+    }
+    case WM_SIZE:
+    {
+        // In the case of using snapping, we must update from here
+        auto rect = window->rect();
+        rect.width = LOWORD(l_param);
+        rect.height = HIWORD(l_param);
+        set_platform_window_rect(*window, rect);
+        window->on_resize();
+        return 0;
+    }
+    case WM_MOVE:
+    {
+        // In the case of using snapping, we must update from here
+        auto rect = window->rect();
+        rect.x = (int) (short) LOWORD(l_param);
+        rect.y = (int) (short) HIWORD(l_param);
+        set_platform_window_rect(*window, rect);
         return 0;
     }
     case WM_NCCALCSIZE:
@@ -593,6 +673,27 @@ static LRESULT CALLBACK WindowProc(HWND hwnd, UINT msg, WPARAM w_param, LPARAM l
         window->get_handle().resizing_moving = 0;
         return 0;
     }
+    case WM_SYSKEYDOWN:
+    case WM_KEYDOWN:
+    {
+        // Bit 29 is set to 1 for SYSKEYDOWN when ALT is pressed and this window
+        // has keyboard focus. This is better than querying keyboard state.
+        bool alt = l_param & 0x20000000;
+
+        switch (w_param)
+        {
+            // clang-format off
+        case VK_RETURN:
+            if (alt)
+            {
+        // This is so weird...
+        case VK_F11:
+            window->fullscreen(!window->is_fullscreen());
+            }
+            break;
+            // clang-format on
+        }
+    }
     }
 
     LRESULT result = DefWindowProcA(hwnd, msg, w_param, l_param);
@@ -637,6 +738,11 @@ Window* Window::create(const char* name, const WindowOptions& options)
 
     delete window;
     return nullptr;
+}
+
+bool Window::fullscreen(bool enable)
+{
+    return set_platform_window_fullscreen(*this, enable);
 }
 
 bool Window::hide()

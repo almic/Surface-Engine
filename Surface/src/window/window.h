@@ -86,6 +86,9 @@ struct WindowHandle
     unsigned char resize_skip = 0; // performance use
     unsigned int resizing_moving;
     long long mouse_pos;
+
+    // Used to reset window style for fullscreen trasitions
+    unsigned int style = 0;
 };
 
 #else
@@ -111,6 +114,22 @@ class Window
      * resize or move the window
      */
     typedef bool (*TitlebarHitTest)(Window* window, unsigned int x_pos, unsigned int y_pos);
+
+    /**
+     * @brief Callback when a window is resized.
+     */
+    typedef void (*ResizeCallback)(Window* window);
+
+    /**
+     * @brief Window dimensions
+     */
+    struct Rect
+    {
+        int x;
+        int y;
+        unsigned int width;
+        unsigned int height;
+    };
 
   public:
     // Retrieve a created window from its handle
@@ -149,6 +168,10 @@ class Window
     // Window y position
     int y = 0;
 
+    // Last window rect, used for fullscreen transitions
+    Rect last_rect;
+    bool m_is_fullscreen = false;
+
     // Window internal name
     const char* name;
 
@@ -160,6 +183,9 @@ class Window
 
     // Hit test method for the title bar
     TitlebarHitTest m_title_bar_hit_test = nullptr;
+
+    // Resize callback
+    ResizeCallback m_resize_callback = nullptr;
 
   public:
     // If the application has been quit via this window and should terminate
@@ -206,6 +232,27 @@ class Window
         return false;
     }
 
+    inline void set_resize_callback(ResizeCallback method)
+    {
+        m_resize_callback = method;
+    }
+
+    inline void on_resize()
+    {
+        if (m_resize_callback)
+        {
+            m_resize_callback(this);
+        }
+    }
+
+    inline bool is_fullscreen() const
+    {
+        return m_is_fullscreen;
+    }
+
+    // Set window fullscreen mode
+    bool fullscreen(bool enable);
+
     // Hide this window, returning true if the window was previously shown
     bool hide();
 
@@ -214,6 +261,12 @@ class Window
 
     // Update this window
     void update();
+
+    // Get the window position and size
+    inline Rect rect() const
+    {
+        return {x, y, width, height};
+    }
 
   private:
     // Allow private access from these functions
@@ -225,6 +278,8 @@ class Window
     friend bool hide_platform_window(Window& window);
     friend bool show_platform_window(Window& window);
     friend void update_platform_window(Window& window);
+    friend void set_platform_window_rect(Window& window, const Rect& rect);
+    friend bool set_platform_window_fullscreen(Window& window, bool enable);
 };
 
 } // namespace Surface

@@ -13,13 +13,29 @@
 
 #undef NULL
 
+using Surface::JSON::json;
+
+// Static because we only use one and it makes static callbacks possible
+static Surface::Graphics::RenderEngine* render_engine = nullptr;
+
+// Static target console for logging
+Surface::Console* console = nullptr;
+
+static void LOG(const char* message)
+{
+    if (!console)
+    {
+        return;
+    }
+
+    console->writeln(message);
+}
+
 class SandboxApp : public Surface::App
 {
     Surface::Window* main_window = nullptr;
     Surface::Window* mini_console = nullptr;
     Surface::Console* console = nullptr;
-    Surface::Graphics::RenderEngine* render_engine = nullptr;
-
     std::function<void(const char*)> log;
 
     float clear_color[4] = {1.0f, 0.0f, 0.0f, 1.0f};
@@ -71,6 +87,26 @@ class SandboxApp : public Surface::App
         return true;
     }
 
+    static void resize(Surface::Window* window)
+    {
+        if (!render_engine || !render_engine->bind_window(window->get_native_handle()))
+        {
+            return;
+        }
+
+        auto rect = window->rect();
+        if (!render_engine->resize(rect.width, rect.height))
+        {
+            LOG(render_engine->get_last_error().get_message());
+        }
+        else
+        {
+            LOG("Resized to:");
+            LOG(json::to_string(rect.width).string());
+            LOG(json::to_string(rect.height).string());
+        }
+    }
+
     void create_windows()
     {
         Surface::WindowOptions options{
@@ -95,6 +131,7 @@ class SandboxApp : public Surface::App
         create_windows();
 
         log = std::bind(&Surface::Console::writeln, console, std::placeholders::_1);
+        ::console = console;
 
         log("Setting up the application");
 
@@ -127,6 +164,8 @@ class SandboxApp : public Surface::App
                 {
                     log(device_name);
                 }
+
+                main_window->set_resize_callback(resize);
             }
             else
             {
@@ -136,6 +175,8 @@ class SandboxApp : public Surface::App
 
             render_engine->set_clear_color(clear_color);
         }
+
+        set_max_delta_time(0.05);
 
         timer.log_to(log);
     }
@@ -157,8 +198,8 @@ class SandboxApp : public Surface::App
         if (fps_accum > 1.0)
         {
             // Use json string conversion
-            Surface::JSON::json fps = frames / fps_accum;
-            log(Surface::JSON::json::to_string(fps).string());
+            json fps = frames / fps_accum;
+            log(json::to_string(fps).string());
 
             fps_accum = 0.0f;
             frames = 0;

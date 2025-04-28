@@ -45,6 +45,8 @@ struct RenderEngine
 
     virtual void set_clear_color(const float (&color)[4]) = 0;
 
+    virtual bool resize(unsigned int width, unsigned int height) = 0;
+
     virtual const char* get_device_name() const = 0;
 
   public: // Operators
@@ -85,6 +87,7 @@ struct BlankRenderEngine : public RenderEngine
     bool render() override;
     void clear_commands() override;
     void set_clear_color(const float (&color)[4]) override;
+    bool resize(unsigned int width, unsigned int height) override;
     const char* get_device_name() const override;
 };
 

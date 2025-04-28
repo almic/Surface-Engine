@@ -121,6 +121,12 @@ DX12RenderEngine::~DX12RenderEngine()
 
 bool DX12RenderEngine::bind_window(void* native_window_handle)
 {
+    // Already bound
+    if (m_target != nullptr && m_target->native == native_window_handle)
+    {
+        return true;
+    }
+
     if (m_window_targets.contains((HWND) native_window_handle))
     {
         m_target = &m_window_targets.at((HWND) native_window_handle);
@@ -130,6 +136,8 @@ bool DX12RenderEngine::bind_window(void* native_window_handle)
     // Set to nullptr until it is created successfully
     m_target = nullptr;
     RenderTarget target;
+    target.native = native_window_handle;
+
     HRESULT result;
 
     // Create swap chain
@@ -160,10 +168,16 @@ bool DX12RenderEngine::bind_window(void* native_window_handle)
         }
 
         swap_chain1.As(&target.swap_chain);
-    }
 
-    // Set initial frame sync (is probably 0)
-    target.sync.frame_index = target.swap_chain->GetCurrentBackBufferIndex();
+        // Set initial frame sync (is probably 0, but not required)
+        target.frame_index = target.swap_chain->GetCurrentBackBufferIndex();
+
+        // Retrieve current swapchain dimensions for later resizes
+        target.swap_chain->GetDesc1(&desc);
+
+        target.width = desc.Width;
+        target.height = desc.Height;
+    }
 
     // Create sync resources
     {
@@ -269,7 +283,7 @@ bool DX12RenderEngine::render()
         return false;
     }
 
-    auto frame_index = m_target->sync.frame_index;
+    auto& frame_index = m_target->frame_index;
     auto& buffer = m_target->rtv_heap.resources[frame_index];
 
     // Clear color
@@ -288,57 +302,37 @@ bool DX12RenderEngine::render()
     }
 
     // Present
+    D3D12_RESOURCE_BARRIER barrier = Barrier::transition(buffer, D3D12_RESOURCE_STATE_RENDER_TARGET,
+                                                         D3D12_RESOURCE_STATE_PRESENT);
+    m_command_list->ResourceBarrier(1, &barrier);
+
+    result = m_command_list->Close();
+    if (FAILED(result))
     {
-        D3D12_RESOURCE_BARRIER barrier = Barrier::transition(
-            buffer, D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_PRESENT);
-        m_command_list->ResourceBarrier(1, &barrier);
-
-        result = m_command_list->Close();
-        if (FAILED(result))
-        {
-            last_error = Error::create("Failed to close command list for frame", Error_Generic);
-            return false;
-        }
-
-        ID3D12CommandList* const list[] = {
-            m_command_list.Get(),
-        };
-        m_command_queue->ExecuteCommandLists(_countof(list), list);
-
-        result = m_target->swap_chain->Present(0, DXGI_PRESENT_ALLOW_TEARING);
-        if (FAILED(result))
-        {
-            last_error = Error::create("Failed to present frame", Error_Generic);
-            return false;
-        }
-
-        // Update frame and fence value
-        m_target->sync.frame_index = m_target->swap_chain->GetCurrentBackBufferIndex();
-        ++(m_target->sync.fence_value);
-
-        // Signal fence value
-        result = m_command_queue->Signal(m_target->sync.fence.Get(), m_target->sync.fence_value);
-        if (FAILED(result))
-        {
-            last_error = Error::create("Failed to signal fence", Error_Generic);
-            return false;
-        }
-
-        // TODO: remove this and create a better system to sync with GPU, such as just returning
-        // from this method immediately if the fence value isn't correct
-
-        // Wait for frame to be presented
-        {
-            if (m_target->sync.fence->GetCompletedValue() < m_target->sync.fence_value)
-            {
-                result = m_target->sync.fence->SetEventOnCompletion(m_target->sync.fence_value,
-                                                                    m_target->sync.fence_event);
-                WaitForSingleObject(m_target->sync.fence_event, INFINITE);
-            }
-        }
+        last_error = Error::create("Failed to close command list for frame", Error_Generic);
+        return false;
     }
 
-    return true;
+    ID3D12CommandList* const list[] = {
+        m_command_list.Get(),
+    };
+    m_command_queue->ExecuteCommandLists(_countof(list), list);
+
+    result = m_target->swap_chain->Present(0, DXGI_PRESENT_ALLOW_TEARING);
+    if (FAILED(result))
+    {
+        last_error = Error::create("Failed to present frame", Error_Generic);
+        return false;
+    }
+
+    // Update frame and flush
+    frame_index = m_target->swap_chain->GetCurrentBackBufferIndex();
+
+    // TODO: remove this and create a better system to sync with GPU, such as just returning
+    // from this method immediately if the fence value isn't correct
+
+    // Wait for frame to be presented
+    return flush_target();
 }
 
 void DX12RenderEngine::clear_commands()
@@ -510,6 +504,69 @@ void DX12RenderEngine::set_clear_color(const float (&color)[4])
     }
 }
 
+bool DX12RenderEngine::resize(unsigned int width, unsigned int height)
+{
+    if (!m_target)
+    {
+        last_error = Error::create("No bound target to resize", Error_Generic);
+        return false;
+    }
+
+    if (m_target->width == width && m_target->height == height)
+    {
+        return true;
+    }
+
+    if (!block_target())
+    {
+        // block_target() sets the error
+        return false;
+    }
+
+    auto& target = *m_target;
+
+    target.width = width;
+    target.height = height;
+
+    for (UINT index = 0; index < target.rtv_heap.count; ++index)
+    {
+        target.rtv_heap.resources[index].Reset();
+    }
+
+    // We must poll for the flags, the one thing not documented to have a "no change" value...
+    DXGI_SWAP_CHAIN_DESC desc;
+    target.swap_chain->GetDesc(&desc);
+    target.swap_chain->ResizeBuffers(0, target.width, target.height, DXGI_FORMAT_UNKNOWN,
+                                     desc.Flags);
+
+    // Update RTVs and frame index
+    target.frame_index = target.swap_chain->GetCurrentBackBufferIndex();
+
+    D3D12_CPU_DESCRIPTOR_HANDLE rtv_handle(
+        target.rtv_heap.heap->GetCPUDescriptorHandleForHeapStart());
+
+    HRESULT result;
+
+    for (UINT index = 0; index < BUFFER_COUNT; ++index)
+    {
+        result =
+            target.swap_chain->GetBuffer(index, IID_PPV_ARGS(&target.rtv_heap.resources[index]));
+        if (FAILED(result))
+        {
+            last_error =
+                Error::create("Failed to update render target resources for resize", Error_Generic);
+            return false;
+        }
+
+        m_device->CreateRenderTargetView(target.rtv_heap.resources[index].Get(), nullptr,
+                                         rtv_handle);
+
+        rtv_handle.ptr += target.rtv_heap.offset;
+    }
+
+    return true;
+}
+
 const char* DX12RenderEngine::get_device_name() const
 {
     return m_device_name;
@@ -530,6 +587,42 @@ void DX12RenderEngine::debug_report_objects()
 
     debug_check->ReportLiveObjects(DXGI_DEBUG_ALL, (DXGI_DEBUG_RLO_FLAGS) flags);
 #endif
+}
+
+bool DX12RenderEngine::flush_target()
+{
+    ++(m_target->sync.fence_value);
+
+    // Signal fence value
+    auto result = m_command_queue->Signal(m_target->sync.fence.Get(), m_target->sync.fence_value);
+    if (FAILED(result))
+    {
+        last_error = Error::create("Failed to signal fence", Error_Generic);
+        return false;
+    }
+
+    return block_target();
+}
+
+bool DX12RenderEngine::block_target()
+{
+    if (m_target->sync.fence->GetCompletedValue() >= m_target->sync.fence_value)
+    {
+        return true;
+    }
+
+    auto result = m_target->sync.fence->SetEventOnCompletion(m_target->sync.fence_value,
+                                                             m_target->sync.fence_event);
+
+    if (FAILED(result))
+    {
+        last_error = Error::create("Failed to set fence event", Error_Generic);
+        return false;
+    }
+
+    WaitForSingleObject(m_target->sync.fence_event, INFINITE);
+
+    return true;
 }
 
 } // namespace Surface::Graphics
