@@ -31,15 +31,13 @@ project "Sandbox"
 
     -- system options
 
-    filter "system:windows"
-        systemversion "latest"
-        entrypoint "mainCRTStartup"
+    systemversion "latest"
+    entrypoint "mainCRTStartup"
 
-        defines
-        {
-            "PLATFORM_WINDOWS"
-        }
-
+    defines
+    {
+        "PLATFORM_WINDOWS"
+    }
 
     -- build configurations
 

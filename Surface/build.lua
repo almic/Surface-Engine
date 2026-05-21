@@ -22,14 +22,12 @@ project "Surface"
     }
 
     -- system options
+    systemversion "latest"
 
-    filter "system:windows"
-        systemversion "latest"
-
-        defines
-        {
-            "PLATFORM_WINDOWS"
-        }
+    defines
+    {
+        "PLATFORM_WINDOWS"
+    }
 
     -- linked libraries
     links

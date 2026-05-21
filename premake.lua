@@ -5,8 +5,8 @@ workspace "Surface"
     startproject "Sandbox"
 
     -- windows build settings
-    filter "system:windows"
-        buildoptions { "/EHsc", "/Zc:preprocessor", "/Zc:__cplusplus" }
+    system "windows"
+    buildoptions { "/EHsc", "/Zc:preprocessor", "/Zc:__cplusplus" }
 
 -- global output directory
 outputdir = "%{cfg.system}-%{cfg.architecture}-%{cfg.buildcfg}"
