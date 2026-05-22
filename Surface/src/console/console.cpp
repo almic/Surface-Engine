@@ -14,7 +14,7 @@ bool is_buffered_platform_console(Console& console);
 
 bool is_open_platform_console(Console& console);
 
-bool write_platform_console(Console& console, char* text);
+bool write_platform_console(Console& console, const char* text);
 
 } // namespace Surface
 
@@ -43,207 +43,170 @@ bool write_platform_console(Console& console, char* text);
 namespace Surface
 {
 
-const size_t BUFFER_SIZE = 1024;
-const size_t PIPE_BUFFER_SIZE = 128;
-
-struct ConsoleHandle
+bool ConsoleHandle::buffer(const char* text)
 {
-    ~ConsoleHandle();
-
-    PROCESS_INFORMATION* pi = nullptr;
-    HANDLE* out = nullptr;
-    OVERLAPPED* overlap = nullptr;
-
-    // connection state
-    bool connected = false;
-    bool closed = false;
-    bool connecting = false;
-    bool write_pending = false;
-
-    // buffered output while waiting for connections
-    char buff[BUFFER_SIZE] = {0};
-    size_t size = 0;
-
-    /**
-     * @brief Helper to buffer text
-     * @param text text to buffer
-     * @return true if the text fit into the buffer, false if not
-     */
-    bool buffer(const char* text)
+    // Full
+    if (size == BUFFER_SIZE - 1)
     {
-        // Full
-        if (size == BUFFER_SIZE - 1)
-        {
-            return false;
-        }
+        return false;
+    }
 
-        size_t str_size = strnlen(text, BUFFER_SIZE + 1); // Overflowing texts get ignored
+    size_t str_size = strnlen(text, BUFFER_SIZE + 1); // Overflowing texts get ignored
 
-        // Don't buffer empty strings
-        if (str_size == 0)
-        {
-            return true;
-        }
-
-        if (size + str_size > BUFFER_SIZE)
-        {
-            return false; // not enough space to buffer
-        }
-
-        // just memcpy, we don't want null characters
-        memcpy(buff + size, text, str_size);
-        size += str_size;
+    // Don't buffer empty strings
+    if (str_size == 0)
+    {
         return true;
     }
 
-    /**
-     * @brief Helper to pull buffered text out, add null characters if size < count
-     *
-     * @param count characters to pull
-     * @return
-     */
-    void unshift(char* out, size_t count)
+    if (size + str_size > BUFFER_SIZE)
     {
-        // Min between count and size
-        size_t real_count = size < count ? size : count;
-
-        // write out bytes
-        memcpy(out, buff, real_count);
-        if (count > real_count)
-        {
-            // write zero up to count
-            memset(out + real_count, 0, count - real_count);
-        }
-
-        // reduce size
-        size -= real_count;
-
-        // copy the end of our buffer to the front
-        for (size_t i = 0, k = real_count; i < size; ++i, ++k)
-        {
-            buff[i] = buff[k];
-        }
-
-        // memset 0 the remainder of the buffer
-        memset(buff + size, 0, BUFFER_SIZE - size);
+        return false; // not enough space to buffer
     }
 
-    /**
-     * @brief Helper to put text at the front of the buffer
-     * @param text text to shift in
-     * @param count how much from text to shift in
-     */
-    void shift(const char* text, size_t count)
+    // just memcpy, we don't want null characters
+    memcpy(buff + size, text, str_size);
+    size += str_size;
+    return true;
+}
+
+void ConsoleHandle::unshift(char* out, size_t count)
+{
+    // Min between count and size
+    size_t real_count = size < count ? size : count;
+
+    // write out bytes
+    memcpy(out, buff, real_count);
+    if (count > real_count)
     {
-        // just use count as a soft-max
-        if (count > BUFFER_SIZE)
-        {
-            count = BUFFER_SIZE;
-        }
-
-        count = strnlen(text, count);
-
-        if (count == 0)
-        {
-            return;
-        }
-
-        if (count == BUFFER_SIZE)
-        {
-            // simply overwrite the entire buffer
-            strncpy_s(buff, BUFFER_SIZE, text, BUFFER_SIZE);
-            return;
-        }
-
-        // copy buffer temporarily
-        char* temp = new char[BUFFER_SIZE];
-        memcpy(temp, buff, BUFFER_SIZE);
-
-        // write text to front of buffer
-        strncpy_s(buff, BUFFER_SIZE, text, count);
-
-        // write temp to buffer
-        memcpy(buff + count, temp, BUFFER_SIZE - count);
-        delete[] temp;
-
-        // update buffer size
-        if (size + count > BUFFER_SIZE)
-        {
-            size = BUFFER_SIZE;
-        }
-        else
-        {
-            size += count;
-        }
+        // write zero up to count
+        memset(out + real_count, 0, count - real_count);
     }
 
-    bool connect()
+    // reduce size
+    size -= real_count;
+
+    // copy the end of our buffer to the front
+    for (size_t i = 0, k = real_count; i < size; ++i, ++k)
     {
-        if (connected)
-        {
-            // Already connected
-            return true;
-        }
+        buff[i] = buff[k];
+    }
 
-        if (closed)
-        {
-            // Cannot connect once closed
-            return false;
-        }
+    // memset 0 the remainder of the buffer
+    memset(buff + size, 0, BUFFER_SIZE - size);
+}
 
-        if (!connecting)
-        {
-            // Only attempt connecting one time
-            disconnect();
-            return false;
-        }
+void ConsoleHandle::shift(const char* text, size_t count)
+{
+    // just use count as a soft-max
+    if (count > BUFFER_SIZE)
+    {
+        count = BUFFER_SIZE;
+    }
 
-        int status = ConnectNamedPipe(*out, overlap);
-        if (status)
-        {
-            // Connection failed
+    count = strnlen(text, count);
+
+    if (count == 0)
+    {
+        return;
+    }
+
+    if (count == BUFFER_SIZE)
+    {
+        // simply overwrite the entire buffer
+        strncpy_s(buff, BUFFER_SIZE, text, BUFFER_SIZE);
+        return;
+    }
+
+    // copy buffer temporarily
+    char* temp = new char[BUFFER_SIZE];
+    memcpy(temp, buff, BUFFER_SIZE);
+
+    // write text to front of buffer
+    strncpy_s(buff, BUFFER_SIZE, text, count);
+
+    // write temp to buffer
+    memcpy(buff + count, temp, BUFFER_SIZE - count);
+    delete[] temp;
+
+    // update buffer size
+    if (size + count > BUFFER_SIZE)
+    {
+        size = BUFFER_SIZE;
+    }
+    else
+    {
+        size += count;
+    }
+}
+
+bool ConsoleHandle::connect()
+{
+    if (connected)
+    {
+        // Already connected
+        return true;
+    }
+
+    if (closed)
+    {
+        // Cannot connect once closed
+        return false;
+    }
+
+    if (!connecting)
+    {
+        // Only attempt connecting one time
+        disconnect();
+        return false;
+    }
+
+    int status = ConnectNamedPipe(*out, overlap);
+    if (status)
+    {
+        // Connection failed
 #ifdef DEBUG
-            status = GetLastError();
-#endif
-            disconnect();
-            return false;
-        }
-
         status = GetLastError();
-        if (status == ERROR_IO_PENDING || status == ERROR_PIPE_LISTENING)
-        {
-            // still waiting
-            return false;
-        }
-
-        if (status == ERROR_PIPE_CONNECTED)
-        {
-            // connected! silly windows apis... the error is the success condition!
-            connected = true;
-            connecting = false;
-
-            return true;
-        }
-
-        // Something else happened
-#ifdef DEBUG
-        int debug = status;
 #endif
         disconnect();
         return false;
     }
 
-    void disconnect()
+    status = GetLastError();
+    if (status == ERROR_IO_PENDING || status == ERROR_PIPE_LISTENING)
     {
-        connected = false;
-        connecting = false;
-        if (out != nullptr)
-        {
-            CloseHandle(*out);
-            delete out;
-            out = nullptr;
-        }
+        // still waiting
+        return false;
     }
+
+    if (status == ERROR_PIPE_CONNECTED)
+    {
+        // connected! silly windows apis... the error is the success condition!
+        connected = true;
+        connecting = false;
+
+        return true;
+    }
+
+    // Something else happened
+#ifdef DEBUG
+    int debug = status;
+#endif
+    disconnect();
+    return false;
+}
+
+void ConsoleHandle::disconnect()
+{
+    connected = false;
+    connecting = false;
+    if (out != nullptr)
+    {
+        CloseHandle(*out);
+        delete out;
+        out = nullptr;
+    }
+}
 };
 
 ConsoleHandle::~ConsoleHandle()
@@ -273,8 +236,8 @@ bool create_platform_console(Console& console)
 
     // clang-format off
     HANDLE pipe = CreateNamedPipeA(
-            pipename, 
-            PIPE_ACCESS_OUTBOUND | FILE_FLAG_OVERLAPPED, 
+            pipename,
+            PIPE_ACCESS_OUTBOUND | FILE_FLAG_OVERLAPPED,
             PIPE_TYPE_MESSAGE | PIPE_NOWAIT, // Asynchronous mode to not block application
             1,
             PIPE_BUFFER_SIZE,
@@ -305,9 +268,9 @@ bool create_platform_console(Console& console)
     si->wShowWindow = 1;
     si->dwFlags |= STARTF_USESHOWWINDOW;
 
-#pragma warning(                                                                                   \
-    disable : 6277) // Security should not be a concern for us, developers passing user-provided
-                    // strings to open a console window should be an obvious red flag.
+#pragma warning(disable                                                                            \
+                : 6277) // Security should not be a concern for us, developers passing user-provided
+                        // strings to open a console window should be an obvious red flag.
     // clang-format off
     // Simple PS script to open a pipe and echo lines out
     const char* proc_script = "powershell.exe "
@@ -357,7 +320,7 @@ bool create_platform_console(Console& console)
                         "clear-host;"
                         "continue;"
                     "}"
-                    
+
                     // Output the message as-is
                     "write-host $msg;"
                 "}"
@@ -668,6 +631,56 @@ bool write_platform_console(Console& console, const char* text)
 
 #endif
 
+////////////////////////////////////////////////
+//               Linux Platform               //
+////////////////////////////////////////////////
+#ifdef PLATFORM_LINUX
+
+namespace Surface
+{
+
+bool create_platform_console(Console& console)
+{
+    // TODO: implement
+    return false;
+}
+
+void destroy_platform_console(Console& console)
+{
+    // TODO: implement
+}
+
+bool flush_platform_console(Console& console)
+{
+    // TODO: implement
+    return false;
+}
+
+bool is_buffered_platform_console(Console& console)
+{
+    // TODO: implement
+    return false;
+}
+
+bool is_open_platform_console(Console& console)
+{
+    // TODO: implement
+    return false;
+}
+
+bool write_platform_console(Console& console, const char* text)
+{
+    // TODO: implement
+    return false;
+}
+
+}
+
+#endif
+
+////////////////////////////////////////////////
+//               All Platforms                //
+////////////////////////////////////////////////
 namespace Surface
 {
 

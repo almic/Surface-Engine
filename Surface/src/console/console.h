@@ -7,6 +7,65 @@ namespace Surface
  */
 struct ConsoleHandle;
 
+#ifdef PLATFORM_WINDOWS
+struct ConsoleHandle
+{
+    ~ConsoleHandle();
+
+    PROCESS_INFORMATION* pi = nullptr;
+    HANDLE* out = nullptr;
+    OVERLAPPED* overlap = nullptr;
+
+    // connection state
+    bool connected = false;
+    bool closed = false;
+    bool connecting = false;
+    bool write_pending = false;
+
+    const size_t BUFFER_SIZE = 1024;
+    const size_t PIPE_BUFFER_SIZE = 128;
+
+    // buffered output while waiting for connections
+    char buff[BUFFER_SIZE] = {0};
+    size_t size = 0;
+
+    /**
+     * @brief Helper to buffer text
+     * @param text text to buffer
+     * @return true if the text fit into the buffer, false if not
+     */
+    bool buffer(const char* text);
+
+    /**
+     * @brief Helper to pull buffered text out, add null characters if size < count
+     *
+     * @param count characters to pull
+     * @return
+     */
+    void unshift(char* out, size_t count);
+
+    /**
+     * @brief Helper to put text at the front of the buffer
+     * @param text text to shift in
+     * @param count how much from text to shift in
+     */
+    void shift(const char* text, size_t count);
+
+    bool connect();
+
+    void disconnect();
+};
+#elif defined(PLATFORM_LINUX)
+struct ConsoleHandle
+{
+// TODO: implement
+};
+#else
+struct ConsoleHandle
+{
+};
+#endif
+
 /**
  * @brief A very simple console, it should be used by applications that start without displaying a
  * console window. The spawned console process will share stdio buffers (stdout/ stdin/ stderr) and
