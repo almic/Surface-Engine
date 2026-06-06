@@ -1,3 +1,6 @@
 [workspace]
-members = ["surface"]
+members = [
+    "surface",
+    "core/json",
+]
 resolver = "3"
