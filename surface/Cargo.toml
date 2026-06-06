@@ -1,0 +1,10 @@
+[package]
+name = "surface"
+description = "Surface application engine"
+version = "0.1.0"
+edition = "2024"
+
+readme = "../README.md"
+license = "MIT"
+repository = "https://github.com/almic/Surface-Engine"
+documentation = "https://docs.rs/surface"
